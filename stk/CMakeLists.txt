@@ -11,7 +11,7 @@ option(BUILD_SHARED_LIBS "Build shared library" ON)
 option(BUILD_VECTOR "Build Vector module" ON)
 option(BUILD_RBTREE "Build RBTree module" ON)
 option(BUILD_STRING "Build String module" ON)
-option(BUILD_TESTS "Build tests" ON)
+option(BUILD_TESTS "Build tests" OFF)
 
 set(INTERNAL_INCLUDE_DIR ${STK_INCLUDE_DIR}/stk/internal)
 file(MAKE_DIRECTORY ${INTERNAL_INCLUDE_DIR})
