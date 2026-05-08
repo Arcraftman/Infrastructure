@@ -1,13 +1,12 @@
 // include/stk/string.h
-#ifndef STK_STRING_H
-#define STK_STRING_H
+#pragma once
 
 #ifdef __cplusplus
-// C++ °æ±¾
-#include "internal/cpp/string.h"
+
+#include "internal/cpp/stk_string.hpp"
+
 #else
-// C °æ±¾
-#include "internal/string.h"
-#endif
+
+#include "internal/stk_string.h"
 
 #endif

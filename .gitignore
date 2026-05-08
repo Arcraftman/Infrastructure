@@ -1,10 +1,13 @@
 .vs/
 .vscode/
-.build/
+.tags
+Testing/
+build/
 Build/
 MSBuild/
 cmake/
 mathematics/
 stk/include/stk/internal/
+stk/tests/
 CMakeSettings.json
 CMakePresets.json

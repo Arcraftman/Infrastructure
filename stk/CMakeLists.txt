@@ -11,43 +11,46 @@ option(BUILD_SHARED_LIBS "Build shared library" ON)
 option(BUILD_VECTOR "Build Vector module" ON)
 option(BUILD_RBTREE "Build RBTree module" ON)
 option(BUILD_STRING "Build String module" ON)
-option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_TESTS "Build tests" ON)
 
 set(INTERNAL_INCLUDE_DIR ${STK_INCLUDE_DIR}/stk/internal)
 file(MAKE_DIRECTORY ${INTERNAL_INCLUDE_DIR})
 
 # ============== 内部头文件 ==============
 set(C_INTERNAL_HEADERS
-    ${STK_SRC_DIR}/rbtree_config.h
+    ${STK_SRC_DIR}/stk_export.h
+    ${STK_SRC_DIR}/stk_rbtree_config.h
+    ${STK_SRC_DIR}/stk_vector_config.h
 )
 
 set(VECTOR_C_HEADERS
-    ${STK_SRC_DIR}/vector_int.h
-    ${STK_SRC_DIR}/vector_float.h
-    ${STK_SRC_DIR}/vector_double.h
-    ${STK_SRC_DIR}/vector_pointer.h
-    ${STK_SRC_DIR}/vector_string.h
+    ${STK_SRC_DIR}/stk_vector_int.h
+    ${STK_SRC_DIR}/stk_vector_float.h
+    ${STK_SRC_DIR}/stk_vector_double.h
+    ${STK_SRC_DIR}/stk_vector_pointer.h
+    ${STK_SRC_DIR}/stk_vector_string.h
 )
 
 set(RBTREE_C_HEADERS
-    ${STK_SRC_DIR}/rbtree_int.h
-    ${STK_SRC_DIR}/rbtree_float.h
-    ${STK_SRC_DIR}/rbtree_double.h
-    ${STK_SRC_DIR}/rbtree_pointer.h
-    ${STK_SRC_DIR}/rbtree_string.h
+    ${STK_SRC_DIR}/stk_rbtree_int.h
+    ${STK_SRC_DIR}/stk_rbtree_float.h
+    ${STK_SRC_DIR}/stk_rbtree_double.h
+    ${STK_SRC_DIR}/stk_rbtree_pointer.h
+    ${STK_SRC_DIR}/stk_rbtree_string.h
 )
 
 set(STRING_C_HEADERS
-    ${STK_SRC_DIR}/string.h
+    ${STK_SRC_DIR}/stk_string.h
 )
 
+# 只保留 .hpp 和 .tcc 文件
 set(CPP_INTERNAL_HEADERS
-    ${STK_SRC_CXX_DIR}/string.h
-    ${STK_SRC_CXX_DIR}/string.tcc
-    ${STK_SRC_CXX_DIR}/vector.h
-    ${STK_SRC_CXX_DIR}/vector.tcc
-    ${STK_SRC_CXX_DIR}/rbtree.h
-    ${STK_SRC_CXX_DIR}/rbtree.tcc
+    ${STK_SRC_CXX_DIR}/stk_vector.hpp
+    ${STK_SRC_CXX_DIR}/stk_vector.tcc
+    ${STK_SRC_CXX_DIR}/stk_rbtree.hpp
+    ${STK_SRC_CXX_DIR}/stk_rbtree.tcc
+    ${STK_SRC_CXX_DIR}/stk_string.hpp
+    ${STK_SRC_CXX_DIR}/stk_string.tcc
 )
 
 # 复制所有头文件
@@ -55,7 +58,7 @@ file(COPY ${C_INTERNAL_HEADERS} ${VECTOR_C_HEADERS} ${RBTREE_C_HEADERS} ${STRING
     DESTINATION ${INTERNAL_INCLUDE_DIR}
 )
 file(COPY ${CPP_INTERNAL_HEADERS}
-    DESTINATION ${INTERNAL_INCLUDE_DIR}
+    DESTINATION ${INTERNAL_INCLUDE_DIR}/cpp
 )
 
 # ============== 收集所有 OBJECT 文件 ==============
@@ -73,7 +76,7 @@ if(BUILD_VECTOR)
     
     foreach(TYPE ${VECTOR_TYPES})
         add_library(stk_vector_${TYPE} OBJECT 
-            ${STK_SRC_DIR}/vector_${TYPE}.c
+            ${STK_SRC_DIR}/stk_vector_${TYPE}.c
         )
         
         target_include_directories(stk_vector_${TYPE}
@@ -94,7 +97,7 @@ if(BUILD_VECTOR)
         if(MSVC)
             target_compile_options(stk_vector_${TYPE} PRIVATE /W4 /wd4013 /wd4047 /wd4996)
         else()
-            target_compile_options(stk_vector_${TYPE} PRIVATE -Wall -Wextra -Wpedantic)
+            target_compile_options(stk_vector_${TYPE} PRIVATE -Wall -Wextra -Wpedantic -fPIC)
         endif()
 
         list(APPEND ALL_OBJECTS $<TARGET_OBJECTS:stk_vector_${TYPE}>)
@@ -113,7 +116,7 @@ if(BUILD_RBTREE)
     
     foreach(TYPE ${RBTREE_TYPES})
         add_library(stk_rbtree_${TYPE} OBJECT 
-            ${STK_SRC_DIR}/rbtree_${TYPE}.c
+            ${STK_SRC_DIR}/stk_rbtree_${TYPE}.c
         )
         
         target_include_directories(stk_rbtree_${TYPE}
@@ -134,7 +137,7 @@ if(BUILD_RBTREE)
         if(MSVC)
             target_compile_options(stk_rbtree_${TYPE} PRIVATE /W4 /wd4013 /wd4047 /wd4996)
         else()
-            target_compile_options(stk_rbtree_${TYPE} PRIVATE -Wall -Wextra -Wpedantic)
+            target_compile_options(stk_rbtree_${TYPE} PRIVATE -Wall -Wextra -Wpedantic  -fPIC)
         endif()
 
         list(APPEND ALL_OBJECTS $<TARGET_OBJECTS:stk_rbtree_${TYPE}>)
@@ -143,7 +146,7 @@ endif()
 
 # ============== 3. String 模块 ==============
 if(BUILD_STRING)
-    add_library(stk_string OBJECT ${STK_SRC_DIR}/string.c)
+    add_library(stk_string OBJECT ${STK_SRC_DIR}/stk_string.c)
     
     target_include_directories(stk_string
         PUBLIC  $<BUILD_INTERFACE:${STK_INCLUDE_DIR}> $<INSTALL_INTERFACE:include/stk>
@@ -159,7 +162,7 @@ if(BUILD_STRING)
     if(MSVC)
         target_compile_options(stk_string PRIVATE /W4 /wd4013 /wd4047 /wd4996)
     else()
-        target_compile_options(stk_string PRIVATE -Wall -Wextra -Wpedantic)
+        target_compile_options(stk_string PRIVATE -Wall -Wextra -Wpedantic -fPIC)
     endif()
 
     list(APPEND ALL_OBJECTS $<TARGET_OBJECTS:stk_string>)
@@ -233,7 +236,7 @@ if(BUILD_CLIB)
     
     # ============== 安装 ==============
     install(TARGETS stk
-        EXPORT stkTargets
+        EXPORT StkTargets
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
@@ -254,24 +257,24 @@ if(BUILD_CLIB)
     install(FILES ${VECTOR_C_HEADERS} DESTINATION include/stk/internal)
     install(FILES ${RBTREE_C_HEADERS} DESTINATION include/stk/internal)
     install(FILES ${STRING_C_HEADERS} DESTINATION include/stk/internal)
-    install(FILES ${CPP_INTERNAL_HEADERS} DESTINATION include/stk/internal)
+    install(FILES ${CPP_INTERNAL_HEADERS} DESTINATION include/stk/internal/cpp)
     
     # ============== 导出配置 ==============
     include(CMakePackageConfigHelpers)
     
-    install(EXPORT stkTargets
-        FILE stkTargets.cmake
+    install(EXPORT StkTargets
+        FILE StkTargets.cmake
         NAMESPACE stk::
         DESTINATION lib/cmake/stk
     )
     
     write_basic_package_version_file(
-        ${CMAKE_BINARY_DIR}/stkConfigVersion.cmake
+        ${CMAKE_BINARY_DIR}/StkConfigVersion.cmake
         VERSION ${PROJECT_VERSION}
         COMPATIBILITY AnyNewerVersion
     )
     
-    install(FILES ${CMAKE_BINARY_DIR}/stkConfigVersion.cmake
+    install(FILES ${CMAKE_BINARY_DIR}/StkConfigVersion.cmake
         DESTINATION lib/cmake/stk
     )
 endif()
@@ -288,3 +291,10 @@ message(STATUS "    String:        ${BUILD_STRING}")
 message(STATUS "  Shared:          ${BUILD_SHARED_LIBS}")
 message(STATUS "  Tests:           ${BUILD_TESTS}")
 message(STATUS "")
+
+
+# ============== 测试子目录 ==============
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
