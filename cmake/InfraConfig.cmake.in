@@ -1,14 +1,18 @@
-# modules/stk/cmake/infraConfig.cmake.in
+# ${CMAKE_SOURCE_DIR}/cmake/InfraConfig.cmake.in
+# 注意：这个文件应该在 cmake/ 目录下，而不是 modules/stk/cmake/
 
 @PACKAGE_INIT@
 
 set_and_check(INFRA_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@/cmake/infra")
 list(APPEND CMAKE_MODULE_PATH ${INFRA_CMAKE_DIR})
 
-include("${INFRA_CMAKE_DIR}/infraTargets.cmake")
+# 导入目标
+include("${INFRA_CMAKE_DIR}/infra-targets.cmake" OPTIONAL)
 
-set(INFRA_VERSION "@PROJECT_VERSION@")
-set(INFRA_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+# 设置版本和路径
+set(INFRA_VERSION "@INFRA_VERSION_STRING@")
+set(INFRA_INCLUDE_DIRS "@PACKAGE_INFRA_INCLUDE_DIR@")
 set(INFRA_LIBRARIES infra::stk)
 
+# 检查必需组件
 check_required_components(infra)

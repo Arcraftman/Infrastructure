@@ -1,4 +1,4 @@
-# InfraModules.cmake - 模块化构建系统
+# InfraModules.cmake - 模块化构建系统（增强版）
 
 if(DEFINED INFRA_MODULES_INCLUDED)
     return()
@@ -7,24 +7,53 @@ set(INFRA_MODULES_INCLUDED TRUE)
 
 include(InfraUtils)
 include(InfraCompiler)
+include(InfraHooks)
 
 # 全局注册表
 set(INFRA_REGISTERED_MODULES "" CACHE INTERNAL "")
-set(INFRA_MODULE_OBJECTS_PREFIX "INFRA_OBJS_" CACHE INTERNAL "")
+set(INFRA_MODULE_DEPENDS "" CACHE INTERNAL "")
 
 # 注册主模块
 macro(infra_register_module MODULE_NAME)
     if(NOT ${MODULE_NAME} IN_LIST INFRA_REGISTERED_MODULES)
         list(APPEND INFRA_REGISTERED_MODULES ${MODULE_NAME})
         set(INFRA_OBJS_${MODULE_NAME} "" CACHE INTERNAL "")
+        set(INFRA_MODULE_${MODULE_NAME}_DEPENDS "" CACHE INTERNAL "")
+        set(INFRA_MODULE_${MODULE_NAME}_OPTIONAL "" CACHE INTERNAL "")
         message(STATUS "Infra: Registered module: ${MODULE_NAME}")
     endif()
+endmacro()
+
+# 设置模块依赖
+macro(infra_module_depends MODULE_NAME)
+    set(INFRA_MODULE_${MODULE_NAME}_DEPENDS ${ARGN} CACHE INTERNAL "")
+endmacro()  # ✅ 修复：改为 endmacro()
+
+# 设置可选依赖
+macro(infra_module_optional MODULE_NAME)
+    set(INFRA_MODULE_${MODULE_NAME}_OPTIONAL ${ARGN} CACHE INTERNAL "")
 endmacro()
 
 # 设置模块额外的头文件路径
 macro(infra_module_headers MODULE_NAME GROUP_NAME)
     set(INFRA_${MODULE_NAME}_${GROUP_NAME}_EXTRA_HEADERS ${ARGN} CACHE INTERNAL "")
 endmacro()
+
+# 检查模块依赖
+function(infra_check_dependencies MODULE_NAME)
+    foreach(DEP ${INFRA_MODULE_${MODULE_NAME}_DEPENDS})
+        if(NOT ${DEP} IN_LIST INFRA_REGISTERED_MODULES)
+            message(WARNING "Module ${MODULE_NAME} depends on ${DEP}, but ${DEP} is not enabled")
+            return()
+        endif()
+    endforeach()
+    
+    foreach(OPT ${INFRA_MODULE_${MODULE_NAME}_OPTIONAL})
+        if(${OPT} IN_LIST INFRA_REGISTERED_MODULES)
+            message(STATUS "Module ${MODULE_NAME}: optional dependency ${OPT} is available")
+        endif()
+    endforeach()
+endfunction()
 
 # 注册子模块
 macro(infra_register_submodule MODULE_NAME GROUP_NAME SUB_NAME SOURCE_FILE)
@@ -68,30 +97,21 @@ macro(infra_register_submodule MODULE_NAME GROUP_NAME SUB_NAME SOURCE_FILE)
     endif()
 endmacro()
 
-# 设置子模块头文件（记录用）
+# 设置子模块头文件
 macro(infra_submodule_header MODULE_NAME GROUP_NAME SUB_NAME HEADER_PATH)
 endmacro()
 
 macro(infra_submodule_private_headers MODULE_NAME GROUP_NAME SUB_NAME)
 endmacro()
 
-# ============================================================================
 # 构建单个模块
-# 用法：infra_build_module(stk)
-# ============================================================================
 function(infra_build_module MODULE_NAME)
-    message(STATUS "Infra: infra_build_module called for: ${MODULE_NAME}")
-    
-    if(NOT ${MODULE_NAME} IN_LIST INFRA_REGISTERED_MODULES)
-        message(WARNING "Infra: Module '${MODULE_NAME}' not registered")
-        return()
-    endif()
+    infra_check_dependencies(${MODULE_NAME})
     
     set(MODULE_OBJS ${INFRA_OBJS_${MODULE_NAME}})
-    message(STATUS "Infra: MODULE_OBJS for ${MODULE_NAME} = ${MODULE_OBJS}")
     
     if(NOT MODULE_OBJS)
-        message(STATUS "Module ${MODULE_NAME}: no objects (disabled or no sources)")
+        message(STATUS "Module ${MODULE_NAME}: no objects")
         return()
     endif()
     
@@ -120,9 +140,7 @@ function(infra_build_module MODULE_NAME)
     set_target_properties(${MODULE_NAME} PROPERTIES OUTPUT_NAME ${MODULE_NAME})
 endfunction()
 
-# ============================================================================
 # 构建所有模块
-# ============================================================================
 function(infra_build_all_modules)
     message(STATUS "Infra: Building all registered modules...")
     foreach(MODULE ${INFRA_REGISTERED_MODULES})
@@ -130,25 +148,23 @@ function(infra_build_all_modules)
     endforeach()
 endfunction()
 
+# 根据配置智能构建
 function(infra_build_modules_by_config)
-    message(STATUS "Infra: INFRA_REGISTERED_MODULES = ${INFRA_REGISTERED_MODULES}")
-    message(STATUS "Infra: INFRA_OBJS_stk = ${INFRA_OBJS_stk}")
+    infra_hook_run(PRE_BUILD)
     
     if(INFRA_BUILD_ALL_MODULES)
-        message(STATUS "Infra: Building all modules...")
         infra_build_all_modules()
     else()
         if(INFRA_BUILD_STK AND INFRA_ENABLE_STK)
-            message(STATUS "Infra: Building STK module only...")
             infra_build_module(stk)
         endif()
         if(INFRA_BUILD_LNX AND INFRA_ENABLE_LNX)
-            message(STATUS "Infra: Building LNX module only...")
             infra_build_module(lnx)
         endif()
     endif()
+    
+    infra_hook_run(POST_BUILD)
 endfunction()
-
 
 macro(infra_create_module_library MODULE_NAME)
     if(NOT BUILD_CLIB)
@@ -156,36 +172,15 @@ macro(infra_create_module_library MODULE_NAME)
         return()
     endif()
     
-    # 修正：将 MODULE_NAME 转为大写
-    string(TOUPPER "${MODULE_NAME}" MODULE_NAME_UPPER)
-    
-    if(NOT INFRA_ENABLE_${MODULE_NAME_UPPER})
-        message(STATUS "Infra: ${MODULE_NAME} module not enabled (INFRA_ENABLE_${MODULE_NAME_UPPER}=${INFRA_ENABLE_${MODULE_NAME_UPPER}})")
-        return()
-    endif()
-    
     # 收集该模块的所有 OBJECT 库
     set(OBJECTS "")
     
-    # 使用已知的命名规则（更可靠）
-    if(INFRA_${MODULE_NAME_UPPER}_ENABLE_CORE)
-        foreach(SUB core_vector core_list core_rbtree core_string)
-            set(TGT_NAME "infra_${MODULE_NAME}_${SUB}")
-            if(TARGET ${TGT_NAME})
-                list(APPEND OBJECTS $<TARGET_OBJECTS:${TGT_NAME}>)
-                message(STATUS "Infra: Adding ${TGT_NAME} to ${MODULE_NAME}")
-            endif()
-        endforeach()
-    endif()
-    
-    # 备用方案：遍历所有目标
+    # 遍历所有以 infra_${MODULE_NAME}_ 开头的目标
     get_cmake_property(ALL_TARGETS TARGETS)
     foreach(TGT ${ALL_TARGETS})
         if(TGT MATCHES "^infra_${MODULE_NAME}_.*")
-            if(NOT TGT IN_LIST OBJECTS_LIST)
-                list(APPEND OBJECTS $<TARGET_OBJECTS:${TGT}>)
-                message(STATUS "Infra: Adding ${TGT} to ${MODULE_NAME}")
-            endif()
+            list(APPEND OBJECTS $<TARGET_OBJECTS:${TGT}>)
+            message(STATUS "Infra: Adding ${TGT} to ${MODULE_NAME}")
         endif()
     endforeach()
     
@@ -213,11 +208,4 @@ macro(infra_create_module_library MODULE_NAME)
     set_target_properties(${MODULE_NAME} PROPERTIES OUTPUT_NAME ${MODULE_NAME})
     
     add_library(infra::${MODULE_NAME} ALIAS ${MODULE_NAME})
-endmacro()
-
-
-macro(infra_create_all_module_libraries)
-    foreach(MODULE ${INFRA_REGISTERED_MODULES})
-        infra_create_module_library(${MODULE})
-    endforeach()
 endmacro()
