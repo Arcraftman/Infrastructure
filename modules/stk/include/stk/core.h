@@ -2,19 +2,20 @@
 #define STK_SRC_CORE_H
 #ifdef __cplusplus
 
-#include "core/cpp/stk_core_vector.hpp"
-#include "core/cpp/stk_core_rbtree.hpp"
-#include "core/cpp/stk_core_string.hpp"
-#include "core/stk_export.h"
-#include "core/stk_core_config.h"
+#include "core/cpp/vector.hpp"
+#include "core/cpp/rbtree.hpp"
+#include "core/cpp/string.hpp"
+#include "core/stkdef.h"
+#include "core/config.h"
 
 #else
 
-#include "core/stk_core_vector.h"
-#include "core/stk_core_rbtree.h"
-#include "core/stk_core_str.h"
-#include "core/stk_export.h"
-#include "core/stk_core_config.h"
+#include "core/vector.h"
+#include "core/rbtree.h"
+#include "core/str.h"
+#include "core/stkdef.h"
+#include "core/config.h"
+#include "core/list.h"
 
 #endif
 

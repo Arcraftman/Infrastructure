@@ -1,0 +1,170 @@
+# InfraCompiler.cmake - 编译器检测和配置
+
+if(DEFINED INFRA_COMPILER_INCLUDED)
+    return()
+endif()
+set(INFRA_COMPILER_INCLUDED TRUE)
+
+macro(infra_detect_compiler)
+    if(MSVC)
+        set(INFRA_COMPILER_ID "MSVC")
+        set(INFRA_COMPILER_IS_MSVC TRUE)
+    elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        set(INFRA_COMPILER_ID "GCC")
+        set(INFRA_COMPILER_IS_GCC TRUE)
+    elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        set(INFRA_COMPILER_ID "Clang")
+        set(INFRA_COMPILER_IS_CLANG TRUE)
+    else()
+        set(INFRA_COMPILER_ID "Unknown")
+    endif()
+    message(STATUS "Infra: Detected compiler: ${INFRA_COMPILER_ID}")
+endmacro()
+
+macro(infra_set_compile_options TARGET)
+    # 基础警告
+    if(INFRA_ENABLE_WARNINGS)
+        if(MSVC)
+            target_compile_options(${TARGET} PRIVATE /W4)
+            if(INFRA_TREAT_WARNINGS_AS_ERRORS)
+                target_compile_options(${TARGET} PRIVATE /WX)
+            endif()
+        elseif(INFRA_COMPILER_IS_GCC OR INFRA_COMPILER_IS_CLANG)
+            target_compile_options(${TARGET} PRIVATE -Wall -Wextra)
+            if(INFRA_ENABLE_EXTRA_WARNINGS)
+                target_compile_options(${TARGET} PRIVATE -Weverything 2>/dev/null)
+            endif()
+            if(INFRA_TREAT_WARNINGS_AS_ERRORS)
+                target_compile_options(${TARGET} PRIVATE -Werror)
+            endif()
+        endif()
+    endif()
+    
+    # 优化选项
+    if(INFRA_ENABLE_OPTIMIZATION)
+        if(MSVC)
+            if(INFRA_OPTIMIZATION_LEVEL STREQUAL "O0")
+                target_compile_options(${TARGET} PRIVATE /Od)
+            elseif(INFRA_OPTIMIZATION_LEVEL STREQUAL "O1")
+                target_compile_options(${TARGET} PRIVATE /O1)
+            elseif(INFRA_OPTIMIZATION_LEVEL STREQUAL "O2")
+                target_compile_options(${TARGET} PRIVATE /O2)
+            elseif(INFRA_OPTIMIZATION_LEVEL STREQUAL "O3")
+                target_compile_options(${TARGET} PRIVATE /O3)
+            elseif(INFRA_OPTIMIZATION_LEVEL STREQUAL "Os")
+                target_compile_options(${TARGET} PRIVATE /Os)
+            endif()
+        elseif(INFRA_COMPILER_IS_GCC OR INFRA_COMPILER_IS_CLANG)
+            target_compile_options(${TARGET} PRIVATE -${INFRA_OPTIMIZATION_LEVEL})
+        endif()
+    else()
+        if(MSVC)
+            target_compile_options(${TARGET} PRIVATE /Od)
+        else()
+            target_compile_options(${TARGET} PRIVATE -O0)
+        endif()
+    endif()
+    
+    # 调试符号
+    if(INFRA_ENABLE_DEBUG_SYMBOLS)
+        if(MSVC)
+            target_compile_options(${TARGET} PRIVATE /Zi)
+            target_link_options(${TARGET} PRIVATE /DEBUG)
+        else()
+            target_compile_options(${TARGET} PRIVATE -g)
+        endif()
+    endif()
+    
+    # 位置无关代码
+    if(INFRA_POSITION_INDEPENDENT_CODE)
+        set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
+    
+    # 特定编译器的额外设置
+    if(INFRA_COMPILER_IS_GCC OR INFRA_COMPILER_IS_CLANG)
+        target_compile_options(${TARGET} PRIVATE -Wshadow -Wconversion -Wno-unused-parameter)
+        
+        if(BUILD_SHARED_LIBS)
+            target_compile_options(${TARGET} PRIVATE -fPIC)
+        endif()
+        
+        # 分析器
+        if(INFRA_ENABLE_GCOV)
+            target_compile_options(${TARGET} PRIVATE --coverage)
+            target_link_options(${TARGET} PRIVATE --coverage)
+        endif()
+        
+        if(INFRA_ENABLE_PROFILING)
+            target_compile_options(${TARGET} PRIVATE -pg)
+            target_link_options(${TARGET} PRIVATE -pg)
+        endif()
+        
+        # Sanitizers
+        if(INFRA_ENABLE_ASAN)
+            target_compile_options(${TARGET} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+            target_link_options(${TARGET} PRIVATE -fsanitize=address)
+        endif()
+        if(INFRA_ENABLE_UBSAN)
+            target_compile_options(${TARGET} PRIVATE -fsanitize=undefined)
+            target_link_options(${TARGET} PRIVATE -fsanitize=undefined)
+        endif()
+        if(INFRA_ENABLE_TSAN)
+            target_compile_options(${TARGET} PRIVATE -fsanitize=thread)
+            target_link_options(${TARGET} PRIVATE -fsanitize=thread)
+        endif()
+        
+        # LTO
+        if(INFRA_ENABLE_LTO)
+            target_compile_options(${TARGET} PRIVATE -flto)
+            target_link_options(${TARGET} PRIVATE -flto)
+        endif()
+    endif()
+    
+    # MSVC 特定
+    if(MSVC)
+        target_compile_options(${TARGET} PRIVATE /wd4013 /wd4047 /wd4996 /wd4204)
+        target_compile_definitions(${TARGET} PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
+    endif()
+endmacro()
+
+macro(infra_set_link_options TARGET)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        target_link_libraries(${TARGET} PRIVATE m)
+    endif()
+    
+    if(MSVC AND BUILD_SHARED_LIBS)
+        set_target_properties(${TARGET} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    endif()
+    
+    # 链接时优化
+    if(INFRA_ENABLE_LTO AND (INFRA_COMPILER_IS_GCC OR INFRA_COMPILER_IS_CLANG))
+        target_link_options(${TARGET} PRIVATE -flto)
+    endif()
+    
+    if(INFRA_ENABLE_IPO)
+        set_target_properties(${TARGET} PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
+    
+    # 剥离符号（Release 模式）
+    if(INFRA_STRIP_SYMBOLS AND CMAKE_BUILD_TYPE STREQUAL "Release")
+        if(INFRA_COMPILER_IS_GCC OR INFRA_COMPILER_IS_CLANG)
+            target_link_options(${TARGET} PRIVATE -s)
+        endif()
+    endif()
+endmacro()
+
+macro(infra_set_export_definitions TARGET)
+    if(BUILD_SHARED_LIBS)
+        target_compile_definitions(${TARGET} PUBLIC INFRA_LIBC INFRA_DLL PRIVATE INFRA_EXPORTING)
+    else()
+        target_compile_definitions(${TARGET} PUBLIC INFRA_LIBC)
+    endif()
+endmacro()
+
+macro(infra_setup_target TARGET)
+    infra_set_compile_options(${TARGET})
+    infra_set_export_definitions(${TARGET})
+    infra_set_link_options(${TARGET})
+endmacro()
+
+infra_detect_compiler()

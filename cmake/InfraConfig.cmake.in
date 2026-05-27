@@ -1,0 +1,14 @@
+# modules/stk/cmake/infraConfig.cmake.in
+
+@PACKAGE_INIT@
+
+set_and_check(INFRA_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@/cmake/infra")
+list(APPEND CMAKE_MODULE_PATH ${INFRA_CMAKE_DIR})
+
+include("${INFRA_CMAKE_DIR}/infraTargets.cmake")
+
+set(INFRA_VERSION "@PROJECT_VERSION@")
+set(INFRA_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+set(INFRA_LIBRARIES infra::stk)
+
+check_required_components(infra)
