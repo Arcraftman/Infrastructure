@@ -1,0 +1,1 @@
+project(lnx VERSION 0.0.0)
