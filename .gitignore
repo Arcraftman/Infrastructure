@@ -5,9 +5,20 @@
 build/
 Build/
 MSBuild/
-CMakeSettings.json
-CMakePresets.json
 README.md
 doc
 /ninja
 /scripts
+# Conan
+conaninfo.txt
+conanbuildinfo.*
+conan.lock
+
+# Vcpkg
+vcpkg_installed/
+vcpkg-manifest-install.log
+
+# IDE
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,19 @@
+{
+  "name": "infra",
+  "version-string": "1.0.0",
+  "description": "Infrastructure Library",
+  "homepage": "https://github.com/yourorg/infra",
+  "dependencies": [
+    "fmt"
+  ],
+  "features": {
+    "tests": {
+      "description": "Build tests",
+      "dependencies": ["gtest"]
+    },
+    "benchmarks": {
+      "description": "Build benchmarks",
+      "dependencies": ["benchmark"]
+    }
+  }
+}

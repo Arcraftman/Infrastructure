@@ -1,57 +1,54 @@
-set(LNX_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(LNX_INCLUDE_DIR ${LNX_ROOT_DIR}/include)
-set(LNX_SRC_DIR ${LNX_ROOT_DIR}/src)
-set(LNX_INTERNAL_DIR ${LNX_ROOT_DIR}/internal)
-set(LNX_TESTS_DIR ${LNX_ROOT_DIR}/tests)
-set(LNX_EXAMPLES_DIR ${LNX_ROOT_DIR}/examples)
+# modules/lnx/CMakeLists.txt
+infra_init_module(lnx)
 
-set(LNX_KERNEL_DIR ${LNX_SRC_DIR}/kernel)
-set(LNX_CORE_DIR ${LNX_SRC_DIR}/core)
-set(LNX_DRIVER_DIR ${LNX_SRC_DIR}/driver)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    infra_print_warning("LNX module only available on Linux, skipping")
+    return()
+endif()
 
-# ============================================================
-# 配置信息
-# ============================================================
-message(STATUS "")
-message(STATUS "==================== LNX Configuration ====================")
-message(STATUS "Project:           LNX ${PROJECT_VERSION}")
-message(STATUS "Platform:          ${CMAKE_SYSTEM_NAME}")
-message(STATUS "Architecture:      ${CMAKE_SYSTEM_PROCESSOR}")
-message(STATUS "Build type:        ${CMAKE_BUILD_TYPE}")
-message(STATUS "Install prefix:    ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "")
-message(STATUS "Options:")
-message(STATUS "  BUILD_LNX:            ${BUILD_LNX}")
-message(STATUS "  BUILD_KERNEL_MODULE:  ${BUILD_KERNEL_MODULE}")
-message(STATUS "  BUILD_TESTS:          ${BUILD_TESTS}")
-message(STATUS "  BUILD_EXAMPLES:       ${BUILD_EXAMPLES}")
-message(STATUS "")
-message(STATUS "Directories:")
-message(STATUS "  Kernel module:    ${LNX_KERNEL_DIR}")
-message(STATUS "  Core library:     ${LNX_CORE_DIR}")
-message(STATUS "  Driver:           ${LNX_DRIVER_DIR}")
-message(STATUS "  Kernel build:     ${KERNEL_BUILD_DIR}")
-message(STATUS "============================================================")
-message(STATUS "")
-
-# ============================================================
-# 设置输出目录
-# ============================================================
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
-# ============================================================
-# 编译选项
-# ============================================================
-if(MSVC)
-    set(LNX_COMPILE_OPTIONS /W4 /wd4013 /wd4047 /wd4996)
-    set(LNX_COMPILE_DEFS _CRT_SECURE_NO_WARNINGS)
-else()
-    set(LNX_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -Werror)
-    set(LNX_COMPILE_DEFS _GNU_SOURCE)
+if(INFRA_LNX_ENABLE_KERNEL)
+    infra_set(KERNEL_SOURCES "")
     
-    if(BUILD_SHARED_LIBS)
-        set(LNX_COMPILE_OPTIONS ${LNX_COMPILE_OPTIONS} -fPIC)
+    infra_append(KERNEL_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/kernel/monitor.c)
+    infra_append(KERNEL_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/kernel/syscall.c)
+    infra_append(KERNEL_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/kernel/proc.c)
+    
+    if(KERNEL_SOURCES)
+        infra_register_component(lnx kernel SOURCES ${KERNEL_SOURCES})
+    endif()
+endif()
+
+if(INFRA_LNX_ENABLE_CORE)
+    infra_set(CORE_SOURCES "")
+    
+    infra_append(CORE_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/core/file.c)
+    infra_append(CORE_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/core/process.c)
+    infra_append(CORE_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/core/signal.c)
+    
+    if(CORE_SOURCES)
+        infra_register_component(lnx core SOURCES ${CORE_SOURCES})
+    endif()
+endif()
+
+if(INFRA_LNX_ENABLE_DRIVER)
+    infra_set(DRIVER_SOURCES "")
+    
+    infra_append(DRIVER_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/driver/device.c)
+    infra_append(DRIVER_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/driver/pci.c)
+    infra_append(DRIVER_SOURCES ${INFRA_MODULE_LNX_SRC_DIR}/driver/usb.c)
+    
+    if(DRIVER_SOURCES)
+        infra_register_component(lnx driver SOURCES ${DRIVER_SOURCES})
+    endif()
+endif()
+
+infra_finalize_module(lnx)
+
+if(TARGET lnx)
+    target_link_libraries(lnx PRIVATE ${CMAKE_DL_LIBS} rt)
+    
+    if(INFRA_LNX_ENABLE_CORE OR INFRA_LNX_ENABLE_DRIVER)
+        find_package(Threads REQUIRED)
+        target_link_libraries(lnx PRIVATE Threads::Threads)
     endif()
 endif()

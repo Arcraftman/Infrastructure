@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: v1.0.0
+    hooks:
+      - id: clang-format
+        name: clang-format
+        files: '\.(c|cc|cpp|h|hpp)$'
+        args: ['-style=file']
+
+  - repo: local
+    hooks:
+      - id: infra-format
+        name: infra-format
+        entry: scripts/format.sh
+        language: script
+        files: '\.(c|cc|cpp|h|hpp)$'
+      - id: infra-lint
+        name: infra-lint
+        entry: scripts/lint.sh
+        language: script
+        files: '\.(c|cc|cpp)$'

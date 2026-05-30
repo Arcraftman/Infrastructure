@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DINFRA_BUILD_TESTS=ON
+      
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
+      
+      - name: Test
+        run: |
+          cd build
+          ctest --output-on-failure -C ${{ matrix.build_type }}

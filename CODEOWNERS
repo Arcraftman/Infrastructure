@@ -1,0 +1,10 @@
+# CODEOWNERS - define maintainers for paths
+# Format: path  @github-user-or-team
+# Edit this to point to your organization/team members
+
+# Owners for everything (placeholder)
+* @infra-maintainers
+
+# Owners for build and cmake files
+/cmake/ @infra-maintainers
+/scripts/ @infra-maintainers

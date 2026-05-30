@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.22.x'
+      
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$PWD/install
+      
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+      
+      - name: Create packages
+        run: |
+          cd build
+          cpack -G TGZ
+          cpack -G ZIP
+      
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/*.tar.gz
+            build/*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
