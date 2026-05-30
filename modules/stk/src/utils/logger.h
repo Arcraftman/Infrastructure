@@ -76,15 +76,15 @@ typedef struct {
 } log_config_t;
 
 /* API 函数声明 */
-STK_API int log_init(log_config_t* config);
-STK_API void log_close(void);
-STK_API int log_reload(log_config_t* config);
-STK_API void log_set_level(log_level_t level);
-STK_API log_level_t log_get_level(void);
-STK_API void log_flush(void);
-STK_API void log_write(log_level_t level, const char* filename, 
-                           int line, const char* func, const char* format, ...);
-STK_API int log_is_enabled(log_level_t level);
+int log_init(log_config_t* config);
+void log_close(void);
+int log_reload(log_config_t* config);
+void log_set_level(log_level_t level);
+log_level_t log_get_level(void);
+void log_flush(void);
+void log_write(log_level_t level, const char* filename, 
+                   int line, const char* func, const char* format, ...);
+int log_is_enabled(log_level_t level);
 
 #ifdef __cplusplus
 }

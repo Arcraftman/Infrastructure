@@ -1,15 +1,13 @@
-# InfraTesting.cmake - 测试系统
+# InfraTesting.cmake - 测试系统（全部用 macro）
 
 if(DEFINED INFRA_TESTING_INCLUDED)
     return()
 endif()
-set(INFRA_TESTING_INCLUDED TRUE)
+infra_set(INFRA_TESTING_INCLUDED TRUE)
 
-# 测试数据目录
-set(INFRA_TEST_DATA_DIR "${CMAKE_SOURCE_DIR}/tests/data" CACHE PATH "Test data directory")
+infra_set(INFRA_TEST_DATA_DIR "${CMAKE_SOURCE_DIR}/tests/data")
 
-# 添加单元测试
-function(infra_add_test TEST_NAME TEST_SOURCE)
+macro(infra_add_test TEST_NAME TEST_SOURCE)
     if(NOT INFRA_BUILD_TESTS)
         return()
     endif()
@@ -29,10 +27,9 @@ function(infra_add_test TEST_NAME TEST_SOURCE)
             ENVIRONMENT "INFRA_TEST_DATA_DIR=${INFRA_TEST_DATA_DIR}"
         )
     endif()
-endfunction()
+endmacro()
 
-# 添加性能测试
-function(infra_add_perf_test TEST_NAME TEST_SOURCE)
+macro(infra_add_perf_test TEST_NAME TEST_SOURCE)
     if(NOT INFRA_BUILD_BENCHMARKS)
         return()
     endif()
@@ -42,11 +39,10 @@ function(infra_add_perf_test TEST_NAME TEST_SOURCE)
     
     add_test(NAME ${TEST_NAME}_perf COMMAND ${TEST_NAME}_perf)
     set_tests_properties(${TEST_NAME}_perf PROPERTIES LABELS "perf")
-endfunction()
+endmacro()
 
-# 添加测试数据
-function(infra_add_test_data DATA_DIR DEST_DIR)
+macro(infra_add_test_data DATA_DIR DEST_DIR)
     if(INFRA_BUILD_TESTS AND EXISTS ${DATA_DIR})
         file(COPY ${DATA_DIR} DESTINATION ${INFRA_TEST_DATA_DIR}/${DEST_DIR})
     endif()
-endfunction()
+endmacro()

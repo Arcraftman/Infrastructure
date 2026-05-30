@@ -1,7 +1,7 @@
 #ifndef STK_SRC_CORE_CONFIG_H
 #define STK_SRC_CORE_CONFIG_H
 
-#include "stkdef.h"
+#include "stk/def.h"
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>

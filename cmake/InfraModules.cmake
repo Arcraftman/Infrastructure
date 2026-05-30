@@ -1,211 +1,179 @@
-# InfraModules.cmake - 模块化构建系统（增强版）
+# InfraModules.cmake - 模块管理（通用版本）
 
 if(DEFINED INFRA_MODULES_INCLUDED)
     return()
 endif()
-set(INFRA_MODULES_INCLUDED TRUE)
+infra_set(INFRA_MODULES_INCLUDED TRUE)
 
 include(InfraUtils)
 include(InfraCompiler)
-include(InfraHooks)
 
-# 全局注册表
-set(INFRA_REGISTERED_MODULES "" CACHE INTERNAL "")
-set(INFRA_MODULE_DEPENDS "" CACHE INTERNAL "")
+# 全局状态
+infra_set(INFRA_REGISTERED_MODULES "")
+infra_set(INFRA_OUTPUT_DIRECTORIES_SET FALSE)
 
-# 注册主模块
+# 输出目录
+macro(infra_setup_output_dirs)
+    if(INFRA_OUTPUT_DIRECTORIES_SET)
+        return()
+    endif()
+    infra_set_output_dirs()
+    infra_set(INFRA_OUTPUT_DIRECTORIES_SET TRUE)
+endmacro()
+
+# 模块目录
+macro(infra_setup_module_dirs MODULE_NAME)
+    string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
+    infra_set(INFRA_MODULE_${MODULE_NAME_UPPER}_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+    infra_set(INFRA_MODULE_${MODULE_NAME_UPPER}_INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    infra_set(INFRA_MODULE_${MODULE_NAME_UPPER}_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+endmacro()
+
+# 注册模块
 macro(infra_register_module MODULE_NAME)
     if(NOT ${MODULE_NAME} IN_LIST INFRA_REGISTERED_MODULES)
-        list(APPEND INFRA_REGISTERED_MODULES ${MODULE_NAME})
-        set(INFRA_OBJS_${MODULE_NAME} "" CACHE INTERNAL "")
-        set(INFRA_MODULE_${MODULE_NAME}_DEPENDS "" CACHE INTERNAL "")
-        set(INFRA_MODULE_${MODULE_NAME}_OPTIONAL "" CACHE INTERNAL "")
-        message(STATUS "Infra: Registered module: ${MODULE_NAME}")
+        infra_append(INFRA_REGISTERED_MODULES ${MODULE_NAME})
+        infra_set(INFRA_MODULE_${MODULE_NAME}_OBJECTS "")
+        infra_set(INFRA_MODULE_${MODULE_NAME}_LINK_LIBS "")
+        infra_print_info("Registered module '${MODULE_NAME}'")
     endif()
 endmacro()
 
-# 设置模块依赖
-macro(infra_module_depends MODULE_NAME)
-    set(INFRA_MODULE_${MODULE_NAME}_DEPENDS ${ARGN} CACHE INTERNAL "")
-endmacro()  # ✅ 修复：改为 endmacro()
-
-# 设置可选依赖
-macro(infra_module_optional MODULE_NAME)
-    set(INFRA_MODULE_${MODULE_NAME}_OPTIONAL ${ARGN} CACHE INTERNAL "")
+# 初始化模块
+macro(infra_init_module MODULE_NAME)
+    infra_register_module(${MODULE_NAME})
+    infra_setup_module_dirs(${MODULE_NAME})
+    infra_setup_output_dirs()
+    infra_print_info("Initialized module '${MODULE_NAME}'")
 endmacro()
 
-# 设置模块额外的头文件路径
-macro(infra_module_headers MODULE_NAME GROUP_NAME)
-    set(INFRA_${MODULE_NAME}_${GROUP_NAME}_EXTRA_HEADERS ${ARGN} CACHE INTERNAL "")
-endmacro()
-
-# 检查模块依赖
-function(infra_check_dependencies MODULE_NAME)
-    foreach(DEP ${INFRA_MODULE_${MODULE_NAME}_DEPENDS})
-        if(NOT ${DEP} IN_LIST INFRA_REGISTERED_MODULES)
-            message(WARNING "Module ${MODULE_NAME} depends on ${DEP}, but ${DEP} is not enabled")
-            return()
-        endif()
-    endforeach()
+# 注册组件（通用）
+macro(infra_register_component MODULE_NAME COMPONENT_NAME)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SOURCES PRIVATE_DIRS LINK_LIBS COMPILE_DEFS)
+    cmake_parse_arguments(COMP "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
-    foreach(OPT ${INFRA_MODULE_${MODULE_NAME}_OPTIONAL})
-        if(${OPT} IN_LIST INFRA_REGISTERED_MODULES)
-            message(STATUS "Module ${MODULE_NAME}: optional dependency ${OPT} is available")
-        endif()
-    endforeach()
-endfunction()
-
-# 注册子模块
-macro(infra_register_submodule MODULE_NAME GROUP_NAME SUB_NAME SOURCE_FILE)
-    if(NOT ${MODULE_NAME} IN_LIST INFRA_REGISTERED_MODULES)
-        message(FATAL_ERROR "Infra: Module '${MODULE_NAME}' not registered before submodule '${SUB_NAME}'")
+    if(NOT COMP_SOURCES)
+        infra_print_warning("Component ${MODULE_NAME}/${COMPONENT_NAME} has no sources")
+        return()
     endif()
     
-    string(TOUPPER "${MODULE_NAME}" M_UPPER)
-    string(TOUPPER "${GROUP_NAME}" G_UPPER)
-    string(TOUPPER "${SUB_NAME}" S_UPPER)
-    set(ENABLE_VAR "INFRA_${M_UPPER}_${G_UPPER}_ENABLE_${S_UPPER}")
+    # 记录组件源文件
+    infra_set(INFRA_MODULE_${MODULE_NAME}_${COMPONENT_NAME}_SOURCES ${COMP_SOURCES})
     
-    if(${ENABLE_VAR})
-        set(FULL_NAME "${GROUP_NAME}_${SUB_NAME}")
-        set(TARGET_NAME "infra_${MODULE_NAME}_${FULL_NAME}")
-        
-        add_library(${TARGET_NAME} OBJECT ${SOURCE_FILE})
-        
-        set(INC_DIRS
+    infra_set(TARGET_NAME "infra_${MODULE_NAME}_${COMPONENT_NAME}")
+    add_library(${TARGET_NAME} OBJECT ${COMP_SOURCES})
+    
+    # 包含目录
+    target_include_directories(${TARGET_NAME} 
+        PRIVATE 
             ${CMAKE_CURRENT_SOURCE_DIR}
-            ${INFRA_SRC_DIR}/${MODULE_NAME}
-            ${INFRA_SRC_DIR}/${MODULE_NAME}/${GROUP_NAME}
-            ${INFRA_SRC_DIR}/${MODULE_NAME}/${GROUP_NAME}/detail
-        )
-        
-        if(DEFINED INFRA_${MODULE_NAME}_${GROUP_NAME}_EXTRA_HEADERS)
-            list(APPEND INC_DIRS ${INFRA_${MODULE_NAME}_${GROUP_NAME}_EXTRA_HEADERS})
-        endif()
-        
-        target_include_directories(${TARGET_NAME} PRIVATE ${INC_DIRS})
-        
-        infra_set_compile_options(${TARGET_NAME})
-        infra_set_export_definitions(${TARGET_NAME})
-        
-        set(INFRA_OBJS_${MODULE_NAME} 
-            ${INFRA_OBJS_${MODULE_NAME}} 
-            $<TARGET_OBJECTS:${TARGET_NAME}>
-            CACHE INTERNAL "")
-        
-        message(STATUS "  ✓ ${TARGET_NAME} -> module: ${MODULE_NAME}")
-    endif()
-endmacro()
-
-# 设置子模块头文件
-macro(infra_submodule_header MODULE_NAME GROUP_NAME SUB_NAME HEADER_PATH)
-endmacro()
-
-macro(infra_submodule_private_headers MODULE_NAME GROUP_NAME SUB_NAME)
-endmacro()
-
-# 构建单个模块
-function(infra_build_module MODULE_NAME)
-    infra_check_dependencies(${MODULE_NAME})
-    
-    set(MODULE_OBJS ${INFRA_OBJS_${MODULE_NAME}})
-    
-    if(NOT MODULE_OBJS)
-        message(STATUS "Module ${MODULE_NAME}: no objects")
-        return()
-    endif()
-    
-    if(NOT BUILD_CLIB)
-        message(STATUS "Module ${MODULE_NAME}: BUILD_CLIB is OFF")
-        return()
-    endif()
-    
-    if(BUILD_SHARED_LIBS)
-        add_library(${MODULE_NAME} SHARED ${MODULE_OBJS})
-        message(STATUS "✓ Created shared library: lib${MODULE_NAME}.so")
-    else()
-        add_library(${MODULE_NAME} STATIC ${MODULE_OBJS})
-        message(STATUS "✓ Created static library: lib${MODULE_NAME}.a")
-    endif()
-    
-    add_library(infra::${MODULE_NAME} ALIAS ${MODULE_NAME})
-    
-    target_include_directories(${MODULE_NAME}
-        PUBLIC
-            $<BUILD_INTERFACE:${INFRA_INCLUDE_DIR}>
-            $<INSTALL_INTERFACE:include>
+            ${INFRA_MODULE_${MODULE_NAME}_INC_DIR}
     )
     
-    infra_setup_target(${MODULE_NAME})
-    set_target_properties(${MODULE_NAME} PROPERTIES OUTPUT_NAME ${MODULE_NAME})
-endfunction()
-
-# 构建所有模块
-function(infra_build_all_modules)
-    message(STATUS "Infra: Building all registered modules...")
-    foreach(MODULE ${INFRA_REGISTERED_MODULES})
-        infra_build_module(${MODULE})
+    # 添加私有目录
+    foreach(DIR ${COMP_PRIVATE_DIRS})
+        target_include_directories(${TARGET_NAME} PRIVATE ${DIR})
     endforeach()
-endfunction()
-
-# 根据配置智能构建
-function(infra_build_modules_by_config)
-    infra_hook_run(PRE_BUILD)
     
-    if(INFRA_BUILD_ALL_MODULES)
-        infra_build_all_modules()
-    else()
-        if(INFRA_BUILD_STK AND INFRA_ENABLE_STK)
-            infra_build_module(stk)
-        endif()
-        if(INFRA_BUILD_LNX AND INFRA_ENABLE_LNX)
-            infra_build_module(lnx)
-        endif()
-    endif()
+    # 编译定义
+    foreach(DEF ${COMP_COMPILE_DEFS})
+        target_compile_definitions(${TARGET_NAME} PRIVATE ${DEF})
+    endforeach()
     
-    infra_hook_run(POST_BUILD)
-endfunction()
+    # 应用编译器设置
+    infra_setup_target(${TARGET_NAME})
+    
+    # 收集对象文件
+    infra_set(INFRA_MODULE_${MODULE_NAME}_OBJECTS 
+        ${INFRA_MODULE_${MODULE_NAME}_OBJECTS} 
+        $<TARGET_OBJECTS:${TARGET_NAME}>)
+    
+    # 收集链接库
+    foreach(LIB ${COMP_LINK_LIBS})
+        infra_append(INFRA_MODULE_${MODULE_NAME}_LINK_LIBS ${LIB})
+    endforeach()
+    
+    infra_print_success("Component: ${TARGET_NAME}")
+endmacro()
 
-macro(infra_create_module_library MODULE_NAME)
-    if(NOT BUILD_CLIB)
-        message(STATUS "Infra: BUILD_CLIB is OFF, skipping ${MODULE_NAME}")
+# 完成模块（通用）
+macro(infra_finalize_module MODULE_NAME)
+    if(TARGET ${MODULE_NAME})
         return()
     endif()
     
-    # 收集该模块的所有 OBJECT 库
-    set(OBJECTS "")
-    
-    # 遍历所有以 infra_${MODULE_NAME}_ 开头的目标
-    get_cmake_property(ALL_TARGETS TARGETS)
-    foreach(TGT ${ALL_TARGETS})
-        if(TGT MATCHES "^infra_${MODULE_NAME}_.*")
-            list(APPEND OBJECTS $<TARGET_OBJECTS:${TGT}>)
-            message(STATUS "Infra: Adding ${TGT} to ${MODULE_NAME}")
-        endif()
-    endforeach()
-    
+    infra_set(OBJECTS ${INFRA_MODULE_${MODULE_NAME}_OBJECTS})
     if(NOT OBJECTS)
-        message(STATUS "Infra: No objects found for module ${MODULE_NAME}")
+        infra_print_warning("Module '${MODULE_NAME}' has no objects")
         return()
     endif()
     
-    # 创建库
     if(BUILD_SHARED_LIBS)
         add_library(${MODULE_NAME} SHARED ${OBJECTS})
-        message(STATUS "✓ Created shared library: lib${MODULE_NAME}.so")
     else()
         add_library(${MODULE_NAME} STATIC ${OBJECTS})
-        message(STATUS "✓ Created static library: lib${MODULE_NAME}.a")
     endif()
     
+    add_library(infra::${MODULE_NAME} ALIAS ${MODULE_NAME})
+    
+    # 公共头文件目录
     target_include_directories(${MODULE_NAME}
-        PUBLIC
+        PUBLIC 
             $<BUILD_INTERFACE:${INFRA_INCLUDE_DIR}>
-            $<INSTALL_INTERFACE:include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
     )
     
-    infra_setup_target(${MODULE_NAME})
-    set_target_properties(${MODULE_NAME} PROPERTIES OUTPUT_NAME ${MODULE_NAME})
+    # 私有头文件目录
+    if(INFRA_MODULE_${MODULE_NAME}_INC_DIR)
+        target_include_directories(${MODULE_NAME}
+            PRIVATE ${INFRA_MODULE_${MODULE_NAME}_INC_DIR}
+        )
+    endif()
     
-    add_library(infra::${MODULE_NAME} ALIAS ${MODULE_NAME})
+    # 链接库
+    if(INFRA_MODULE_${MODULE_NAME}_LINK_LIBS)
+        target_link_libraries(${MODULE_NAME} PRIVATE ${INFRA_MODULE_${MODULE_NAME}_LINK_LIBS})
+    endif()
+    
+    infra_setup_target(${MODULE_NAME})
+    infra_print_success("Module '${MODULE_NAME}' created")
+endmacro()
+
+
+# 批量添加模块
+function(infra_add_modules)
+    foreach(MODULE ${INFRA_MODULES})
+        infra_add_module(${MODULE})
+    endforeach()
+endfunction()
+
+# InfraModules.cmake - 模块管理（修正部分）
+
+# ... 前面保持不变 ...
+
+# 添加模块（改成 macro）
+macro(infra_add_module MODULE_NAME)
+    string(TOUPPER ${MODULE_NAME} MODULE_UPPER)
+    if(NOT INFRA_ENABLE_${MODULE_UPPER})
+        infra_print_info("Module '${MODULE_NAME}' disabled")
+        return()
+    endif()
+    
+    infra_set(MODULE_PATH "${CMAKE_SOURCE_DIR}/modules/${MODULE_NAME}")
+    if(NOT EXISTS "${MODULE_PATH}/CMakeLists.txt")
+        infra_print_warning("Module '${MODULE_NAME}' not found")
+        return()
+    endif()
+    
+    add_subdirectory(${MODULE_PATH})
+    infra_print_success("Added module '${MODULE_NAME}'")
+endmacro()
+
+# 批量添加模块（改成 macro）
+macro(infra_add_modules)
+    foreach(MODULE ${INFRA_MODULES})
+        infra_add_module(${MODULE})
+    endforeach()
 endmacro()
