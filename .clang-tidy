@@ -1,4 +1,22 @@
-Checks: '-*,clang-analyzer-*,modernize-*,performance-*,portability-*'
-WarningsAsErrors: ''
-HeaderFilterRegex: 'modules/.*|include/.*'
-FormatStyle: none
+---
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  concurrency-*,
+  -clang-analyzer-cplusplus*,
+  misc-*,
+  -misc-non-private-member-variables-in-classes,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-uppercase-literal-suffix,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -readability-isolate-declaration,
+FormatStyle: file
+...
+

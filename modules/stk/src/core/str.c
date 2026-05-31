@@ -1,4 +1,6 @@
 #include "str.h"
+#include <string.h>
+#include <stdlib.h>
 
 void str_init(str *s)
 {

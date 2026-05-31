@@ -378,19 +378,19 @@ namespace stk {
             len = size_ - pos;
         }
 
-        // 先删除，再插入
-        // 简化实现：创建新字符串
+        // remove-then-insert
+        // simplified: create new string
         string temp;
         temp.reserve(size_ - len + str_len);
 
-        // 前半部分
+        // first half
         temp.append(data_, pos);
-        // 替换内容
+        // replace content
         temp.append(str, str_len);
-        // 后半部分
+        // second half
         temp.append(data_ + pos + len, size_ - pos - len);
 
-        // 交换
+        // swap
         swap(temp);
         return *this;
     }

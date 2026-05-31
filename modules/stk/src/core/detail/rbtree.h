@@ -5,7 +5,7 @@
 #include "config.h"
 
 // ============================================================
-// 基础类型红黑树声明（int, double, float 等）- 存储值
+// Basic type red-black tree declaration (int, double, float, etc.) - stores values
 // ============================================================
 #define RBTREE_DECLARE_BASIC(type, name)                                            \
     typedef struct rbnode_##name {                                                  \
@@ -38,7 +38,7 @@
     STK_API void rbtree_##name##_clear(rbtree_##name* t);
 
 // ============================================================
-// 结构体类型红黑树声明（str, Person 等）- 存储指针
+// Struct type red-black tree declaration (str, Person, etc.) - stores pointers
 // ============================================================
 #define RBTREE_DECLARE_STRUCT(type, name)                                            \
     typedef struct rbnode_##name {                                                  \
@@ -71,7 +71,7 @@
     STK_API void rbtree_##name##_clear(rbtree_##name* t);
 
 // ============================================================
-// 基础类型红黑树实现
+// Basic type red-black tree implementation
 // ============================================================
 #define RBTREE_IMPLEMENT_BASIC(type, name, cmp)                                     \
     static rbnode_##name* rbtree_##name##_node_new(type val, rbnode_##name* nil) {  \
@@ -381,7 +381,7 @@
     }
 
 // ============================================================
-// 结构体类型红黑树实现（存储指针）
+// Struct type red-black tree implementation (stores pointers)
 // ============================================================
 #define RBTREE_IMPLEMENT_STRUCT(type, name, cmp_func)                               \
     static rbnode_##name* rbtree_##name##_node_new(type* val, rbnode_##name* nil) { \

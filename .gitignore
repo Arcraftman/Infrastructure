@@ -1,24 +1,47 @@
-.vs/
-.vscode/
-.tags
-.idea
+# --- Build ---
 build/
-Build/
-MSBuild/
-README.md
-doc
-/ninja
-/scripts
-# Conan
-conaninfo.txt
-conanbuildinfo.*
-conan.lock
+cmake-build-*/
+out/
 
-# Vcpkg
-vcpkg_installed/
-vcpkg-manifest-install.log
-
-# IDE
+# --- IDE / Editors ---
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
+.DS_Store
+
+# --- CMake ---
+CMakeUserPresets.json
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+compile_commands.json
+*.cmake.in.pro
+
+# --- Compiler / Toolchain ---
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.gcda
+*.gcno
+*.gcov
+*.dSYM/
+
+# --- Generated ---
+*_version.h
+tags
+
+# --- Third-party package managers ---
+conaninfo.txt
+conanbuildinfo.*
+conan.lock
+vcpkg_installed/
+vcpkg-manifest-install.log

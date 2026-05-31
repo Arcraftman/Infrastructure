@@ -35,7 +35,7 @@ STK_API void* vector_back(vector *v);
 STK_API void vector_sort(vector *v);
 STK_API void vector_reverse(vector *v);
 
-// 声明类型化的向量
+// Declare typed vectors
 VECTOR_DECLARE_BASIC(int, int)
 VECTOR_DECLARE_BASIC(float, flt)
 VECTOR_DECLARE_BASIC(double, dub)

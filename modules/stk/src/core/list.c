@@ -1,4 +1,6 @@
 #include "list.h"
+#include <stdlib.h>
+#include <string.h>
 
 static list_node *create_node(void *val) {
     list_node *node = malloc(sizeof(list_node));

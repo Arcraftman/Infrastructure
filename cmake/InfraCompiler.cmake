@@ -1,21 +1,35 @@
-# InfraCompiler.cmake - 编译器配置
+# InfraCompiler.cmake - Compiler detection and per-target configuration
+#
+# Detects the active compiler and provides a macro to apply project-wide
+# compile options to any target.
+#
+# MACROS:
+#   infra_detect_compiler()  - Detect compiler, set INFRA_COMPILER_ID
+#   infra_setup_target(TARGET) - Apply warnings, optimization, debug, PIC
+#
+# VARIABLES SET:
+#   INFRA_COMPILER_ID - One of: MSVC, GCC, Clang, Unknown
+#
+# OPTIONS USED: INFRA_ENABLE_WARNINGS, INFRA_ENABLE_OPTIMIZATION,
+#               INFRA_ENABLE_DEBUG_SYMBOLS, INFRA_POSITION_INDEPENDENT_CODE
+# PLATFORM: Cross-platform (GCC, Clang, MSVC)
 
 if(DEFINED INFRA_COMPILER_INCLUDED)
     return()
 endif()
-infra_set(INFRA_COMPILER_INCLUDED TRUE)
+set(INFRA_COMPILER_INCLUDED TRUE)
 
 macro(infra_detect_compiler)
     if(MSVC)
-        infra_set(INFRA_COMPILER_ID "MSVC")
+        set(INFRA_COMPILER_ID "MSVC")
     elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-        infra_set(INFRA_COMPILER_ID "GCC")
+        set(INFRA_COMPILER_ID "GCC")
     elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        infra_set(INFRA_COMPILER_ID "Clang")
+        set(INFRA_COMPILER_ID "Clang")
     else()
-        infra_set(INFRA_COMPILER_ID "Unknown")
+        set(INFRA_COMPILER_ID "Unknown")
     endif()
-    infra_print_info("Detected compiler: ${INFRA_COMPILER_ID}")
+    infra_info("Detected compiler: ${INFRA_COMPILER_ID}")
 endmacro()
 
 macro(infra_setup_target TARGET)

@@ -1,0 +1,68 @@
+name: Bug Report
+description: Report a defect to help us improve
+labels: [bug, needs-triage]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report.
+        Please try to provide as much detail as possible.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Which version of Infra are you using? (output of `git describe --tags` or CMake configure line)
+      placeholder: e.g., v1.0.0-5-g123abc
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+      placeholder: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the issue.
+      placeholder: |
+        1. Configure with `cmake -B build -G Ninja ...`
+        2. Build with `cmake --build build`
+        3. Run `...`
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output / Backtrace
+      description: Please copy and paste any relevant log output or a stack trace.
+      render: shell
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Linux (specify distro below)
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler & Version
+      description: e.g., GCC 13.2, Clang 18, MSVC 2022
+    validations:
+      required: true

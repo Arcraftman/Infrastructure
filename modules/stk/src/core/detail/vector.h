@@ -4,7 +4,7 @@
 
 #include "config.h"
 
-// 基础类型向量声明（int, double, float 等）- 存储值
+// Basic type vector declaration (int, double, float etc.) - stores values
 #define VECTOR_DECLARE_BASIC(type, name)                                            \
     typedef struct                                                                  \
     {                                                                               \
@@ -37,12 +37,12 @@
     STK_API void vector_##name##_reverse(vector_##name *v);
 
 // ============================================================
-// 结构体类型向量声明（str, Person 等）- 存储指针
+// Struct type vector declaration (str, Person, etc.) - stores pointers
 // ============================================================
 #define VECTOR_DECLARE_STRUCT(type, name)                                           \
     typedef struct                                                                  \
     {                                                                               \
-        type **data;     /* 存储指针，类型是 type** */                              \
+        type **data;     /* stores pointers, type is type** */                              \
         size_t size;                                                                \
         size_t capacity;                                                            \
     } vector_##name;                                                                \
@@ -71,7 +71,7 @@
     STK_API void vector_##name##_reverse(vector_##name *v);
 
 // ============================================================
-// 基础类型向量实现
+// Basic type vector implementation
 // ============================================================
 #define VECTOR_IMPLEMENT_BASIC(type, name)                                          \
     static void vector_##name##_grow(vector_##name *v)                              \
@@ -266,7 +266,7 @@
     }
 
 // ============================================================
-// 结构体类型向量实现（存储指针）
+// Struct type vector implementation (stores pointers)
 // ============================================================
 #define VECTOR_IMPLEMENT_STRUCT(type, name, cmp_func)                               \
     static void vector_##name##_grow(vector_##name *v)                              \

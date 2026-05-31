@@ -17,7 +17,7 @@ typedef struct {
     rbnode* root;
     rbnode* nil;
     size_t size;
-    int (*compare)(const void* a, const void* b);  // 比较函数
+    int (*compare)(const void* a, const void* b);  // Comparison function
 } rbtree;
 
 STK_API void rbtree_init(rbtree* t, int (*compare)(const void* a, const void* b));

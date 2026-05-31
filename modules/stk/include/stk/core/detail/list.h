@@ -67,7 +67,7 @@
     STK_API void list_##prefix##_reverse(list_##prefix *l);                      \
     STK_API void list_##prefix##_sort(list_##prefix *l);
 
-// 基础类型实现
+// Basic type implementation
 #define LIST_IMPLEMENT_BASIC(type, prefix)                                             \
     static list_##prefix##_node *list_##prefix##_create_node(type val)                 \
     {                                                                                  \
@@ -332,7 +332,7 @@
         free(arr);                                                                     \
     }
 
-// 结构体类型实现（需要自定义比较函数）
+// Struct type implementation (requires custom compare function)
 #define LIST_IMPLEMENT_STRUCT(type, prefix, cmp_func)                                  \
     static list_##prefix##_node *list_##prefix##_create_node(type val)                 \
     {                                                                                  \

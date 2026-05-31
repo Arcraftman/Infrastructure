@@ -1,5 +1,5 @@
 #ifndef STK_LOGGER_H
-#define LOGGER_H
+#define STK_LOGGER_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,13 +21,13 @@
 #define gettid() syscall(SYS_gettid)
 #endif
 
-/* 线程本地存储缓冲区大小 */
+/* Thread-local storage buffer size */
 #define THREAD_BUFFER_SIZE 8192
 #define DEFAULT_BUFFER_SIZE 4096
 #define DEFAULT_FLUSH_INTERVAL 3
 #define TIME_STRING_SIZE 64
 
-/* 颜色定义 */
+/* Color definitions */
 #define COLOR_RESET   "\033[0m"
 #define COLOR_TRACE   "\033[90m"
 #define COLOR_DEBUG   "\033[36m"
@@ -40,7 +40,7 @@
 extern "C" {
 #endif
 
-/* 日志级别定义 */
+/* Log level definitions */
 typedef enum {
     LOG_LEVEL_TRACE = 0,
     LOG_LEVEL_DEBUG = 1,
@@ -51,31 +51,31 @@ typedef enum {
     LOG_LEVEL_NONE = 6
 } log_level_t;
 
-/* 日志输出目标选项 */
+/* Log output options */
 typedef enum {
-    LOG_OUTPUT_TO_CONSOLE = 0x01,  /* 输出到控制台 */
-    LOG_OUTPUT_TO_FILE    = 0x02,  /* 输出到文件 */
-    LOG_OUTPUT_TO_BOTH    = 0x03   /* 同时输出到控制台和文件 */
+    LOG_OUTPUT_TO_CONSOLE = 0x01,  /* Output to console */
+    LOG_OUTPUT_TO_FILE    = 0x02,  /* Output to file */
+    LOG_OUTPUT_TO_BOTH    = 0x03   /* Output to both console and file */
 } log_output_option_t;
 
-/* 日志配置结构 */
+/* Log configuration structure */
 typedef struct {
-    log_level_t log_level;              /* 日志级别 */
-    log_output_option_t output_option;   /* 输出选项 */
-    const char* log_file;                    /* 日志文件路径 */
-    int enable_color;                        /* 是否启用颜色 */
-    int enable_timestamp;                    /* 是否启用时间戳 */
-    int enable_fileline;                     /* 是否启用文件名和行号 */
-    int enable_function;                     /* 是否启用函数名 */
-    int enable_thread_id;                    /* 是否启用线程ID */
-    int enable_ms;                           /* 是否显示毫秒 */
-    int buffer_size;                         /* 缓冲区大小 */
-    int flush_interval;                      /* 刷新间隔（秒，0表示立即刷新） */
-    int max_file_size;                       /* 最大文件大小（MB） */
-    int max_file_count;                      /* 最大文件数量 */
+    log_level_t log_level;              /* Log level */
+    log_output_option_t output_option;  /* Output options */
+    const char* log_file;              /* Log file path */
+    int enable_color;                  /* Enable color */
+    int enable_timestamp;              /* Enable timestamp */
+    int enable_fileline;               /* Enable filename and line number */
+    int enable_function;               /* Enable function name */
+    int enable_thread_id;              /* Enable thread ID */
+    int enable_ms;                     /* Enable milliseconds */
+    int buffer_size;                   /* Buffer size */
+    int flush_interval;                /* Flush interval (seconds, 0 = immediate) */
+    int max_file_size;                 /* Max file size (MB) */
+    int max_file_count;                /* Max file count */
 } log_config_t;
 
-/* API 函数声明 */
+/* API function declarations */
 int log_init(log_config_t* config);
 void log_close(void);
 int log_reload(log_config_t* config);
@@ -90,7 +90,7 @@ int log_is_enabled(log_level_t level);
 }
 #endif
 
-/* 日志宏定义 */
+/* Log macro definitions */
 #define LOG_TRACE(format, ...) \
     log_write(LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
 
@@ -109,4 +109,4 @@ int log_is_enabled(log_level_t level);
 #define LOG_FATAL(format, ...) \
     log_write(LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
 
-#endif /* LOGGER_H */
+#endif /* STK_LOGGER_H */

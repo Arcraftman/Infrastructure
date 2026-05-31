@@ -1,4 +1,4 @@
-# InfraHooks.cmake - 钩子机制
+# InfraHooks.cmake - Hook mechanism
 
 if(DEFINED INFRA_HOOKS_INCLUDED)
     return()

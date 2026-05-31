@@ -1,24 +1,37 @@
-# InfraDoc.cmake - 文档生成配置（全部用 macro）
+# InfraDoc.cmake - Documentation generation (Doxygen + Sphinx)
+#
+# Provides Doxygen API-doc and Sphinx user-doc setup.
+# Controlled by INFRA_BUILD_DOCS option.
+#
+# FUNCTIONS:
+#   infra_find_doxygen()          - Locate Doxygen, set INFRA_BUILD_DOCS if absent
+#   infra_setup_doxygen()         - Configure Doxygen targets
+#   infra_setup_sphinx()          - Configure Sphinx targets
+#   infra_setup_documentation()   - Complete doc pipeline (both Doxygen + Sphinx)
+#
+# OPTIONS: INFRA_BUILD_DOCS, INFRA_INSTALL, INFRA_INSTALL_HEADERS
+# DEPENDENCY: Doxygen (optional), Sphinx (optional)
+# PLATFORM: Cross-platform
 
 if(DEFINED INFRA_DOC_INCLUDED)
     return()
 endif()
-infra_set(INFRA_DOC_INCLUDED TRUE)
+set(INFRA_DOC_INCLUDED TRUE)
 
 option(INFRA_BUILD_DOCS "Build documentation" OFF)
 
-macro(infra_find_doxygen)
+function(infra_find_doxygen)
     find_package(Doxygen QUIET)
     
     if(DOXYGEN_FOUND)
-        infra_print_info("Doxygen found - ${DOXYGEN_VERSION}")
+        infra_info("Doxygen found - ${DOXYGEN_VERSION}")
     else()
-        infra_print_info("Doxygen not found, documentation disabled")
-        infra_set(INFRA_BUILD_DOCS OFF)
+        infra_info("Doxygen not found, documentation disabled")
+        set(INFRA_BUILD_DOCS OFF PARENT_SCOPE)
     endif()
-endmacro()
+endfunction()
 
-macro(infra_setup_doxygen)
+function(infra_setup_doxygen)
     if(NOT INFRA_BUILD_DOCS)
         return()
     endif()
@@ -29,15 +42,15 @@ macro(infra_setup_doxygen)
         return()
     endif()
     
-    infra_set(DOXYGEN_INPUT ${INFRA_INCLUDE_DIR})
-    infra_set(DOXYGEN_OUTPUT_DIR ${CMAKE_BINARY_DIR}/docs/html)
+    set(DOXYGEN_INPUT ${INFRA_INCLUDE_DIR})
+    set(DOXYGEN_OUTPUT_DIR ${CMAKE_BINARY_DIR}/docs/html)
     
-    infra_set(DOXYGEN_PROJECT_NAME ${PROJECT_NAME})
-    infra_set(DOXYGEN_PROJECT_NUMBER ${INFRA_VERSION_STRING})
-    infra_set(DOXYGEN_RECURSIVE YES)
-    infra_set(DOXYGEN_GENERATE_LATEX NO)
-    infra_set(DOXYGEN_GENERATE_TREEVIEW YES)
-    infra_set(DOXYGEN_USE_MATHJAX YES)
+    set(DOXYGEN_PROJECT_NAME ${PROJECT_NAME})
+    set(DOXYGEN_PROJECT_NUMBER ${INFRA_VERSION_STRING})
+    set(DOXYGEN_RECURSIVE YES)
+    set(DOXYGEN_GENERATE_LATEX NO)
+    set(DOXYGEN_GENERATE_TREEVIEW YES)
+    set(DOXYGEN_USE_MATHJAX YES)
     
     if(EXISTS ${CMAKE_SOURCE_DIR}/docs/Doxyfile.in)
         configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
@@ -63,10 +76,10 @@ macro(infra_setup_doxygen)
         )
     endif()
     
-    infra_print_success("Doxygen documentation configured")
-endmacro()
+    infra_success("Doxygen documentation configured")
+endfunction()
 
-macro(infra_setup_sphinx)
+function(infra_setup_sphinx)
     if(NOT INFRA_BUILD_DOCS)
         return()
     endif()
@@ -74,12 +87,12 @@ macro(infra_setup_sphinx)
     find_program(SPHINX_BUILD sphinx-build)
     
     if(NOT SPHINX_BUILD)
-        infra_print_info("Sphinx not found")
+        infra_info("Sphinx not found")
         return()
     endif()
     
-    infra_set(SPHINX_SOURCE_DIR ${CMAKE_SOURCE_DIR}/docs)
-    infra_set(SPHINX_OUTPUT_DIR ${CMAKE_BINARY_DIR}/docs/html)
+    set(SPHINX_SOURCE_DIR ${CMAKE_SOURCE_DIR}/docs)
+    set(SPHINX_OUTPUT_DIR ${CMAKE_BINARY_DIR}/docs/html)
     
     if(EXISTS ${SPHINX_SOURCE_DIR}/conf.py)
         add_custom_target(sphinx-docs
@@ -89,13 +102,13 @@ macro(infra_setup_sphinx)
         )
         
         add_dependencies(docs sphinx-docs)
-        infra_print_success("Sphinx documentation configured")
+        infra_success("Sphinx documentation configured")
     endif()
-endmacro()
+endfunction()
 
-macro(infra_setup_documentation)
+function(infra_setup_documentation)
     if(NOT INFRA_BUILD_DOCS)
-        infra_print_info("Documentation disabled")
+        infra_info("Documentation disabled")
         return()
     endif()
     
@@ -103,5 +116,5 @@ macro(infra_setup_documentation)
     infra_setup_doxygen()
     infra_setup_sphinx()
     
-    infra_print_success("Documentation configured (run 'make docs')")
-endmacro()
+    infra_success("Documentation configured (run 'make docs')")
+endfunction()

@@ -1,11 +1,22 @@
-# InfraTesting.cmake - 测试系统（全部用 macro）
+# InfraTesting.cmake - CTest integration helpers
+#
+# Provides macros for adding unit tests, performance benchmarks, and test data.
+# All tests are registered with CTest and include timeout / environment config.
+#
+# MACROS:
+#   infra_add_test(NAME SOURCE [LIBS...])         - Add a unit test executable
+#   infra_add_perf_test(NAME SOURCE [LIBS...])    - Add a benchmark executable
+#   infra_add_test_data(DATA_DIR DEST_DIR)         - Copy test data files
+#
+# OPTIONS: INFRA_BUILD_TESTS, INFRA_BUILD_BENCHMARKS
+# PLATFORM: Cross-platform
 
 if(DEFINED INFRA_TESTING_INCLUDED)
     return()
 endif()
-infra_set(INFRA_TESTING_INCLUDED TRUE)
+set(INFRA_TESTING_INCLUDED TRUE)
 
-infra_set(INFRA_TEST_DATA_DIR "${CMAKE_SOURCE_DIR}/tests/data")
+set(INFRA_TEST_DATA_DIR "${CMAKE_SOURCE_DIR}/tests/data")
 
 macro(infra_add_test TEST_NAME TEST_SOURCE)
     if(NOT INFRA_BUILD_TESTS)
@@ -14,6 +25,9 @@ macro(infra_add_test TEST_NAME TEST_SOURCE)
     
     add_executable(${TEST_NAME} ${TEST_SOURCE})
     target_link_libraries(${TEST_NAME} PRIVATE ${ARGN})
+    
+    # Ensure working directory exists
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
     
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     

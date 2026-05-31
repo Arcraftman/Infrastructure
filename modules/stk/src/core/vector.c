@@ -1,4 +1,7 @@
 #include "vector.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static void grow(vector* v) {
     size_t new_cap = v->capacity == 0 ? VECTOR_DEFAULT_CAPACITY : v->capacity * VECTOR_GROW_FACTOR;
@@ -21,7 +24,7 @@ void vector_free(vector* v) {
     v->capacity = 0;
 }
 
-void vector_push(vector* v, void* val) {  // 改为 void*
+void vector_push(vector* v, void* val) {  /* store as void* */
     if (!v) return;
     if (v->size >= v->capacity) grow(v);
     ((void**)v->data)[v->size++] = val;
@@ -32,7 +35,7 @@ void vector_pop(vector* v) {
     v->size--;
 }
 
-void* vector_get(vector* v, size_t idx) {  // 改为 void*
+void* vector_get(vector* v, size_t idx) {  /* store as void* */
     if (!v || idx >= v->size) {
         fprintf(stderr, "stk_vector_get: index %zu out of range\n", idx);
         exit(1);
@@ -40,12 +43,12 @@ void* vector_get(vector* v, size_t idx) {  // 改为 void*
     return ((void**)v->data)[idx];
 }
 
-void** vector_at(vector* v, size_t idx) {  // 改为 void**
+void** vector_at(vector* v, size_t idx) {  /* store as void** */
     if (!v || idx >= v->size) return NULL;
     return &((void**)v->data)[idx];
 }
 
-void vector_set(vector* v, size_t idx, void* val) {  // 改为 void*
+void vector_set(vector* v, size_t idx, void* val) {  /* store as void* */
     if (!v || idx >= v->size) return;
     ((void**)v->data)[idx] = val;
 }
@@ -104,14 +107,14 @@ void vector_clear(vector* v) {
     v->size = 0;
 }
 
-void vector_fill(vector* v, void* val) {  // 改为 void*
+void vector_fill(vector* v, void* val) {  /* store as void* */
     if (!v) return;
     for (size_t i = 0; i < v->size; i++) {
         ((void**)v->data)[i] = val;
     }
 }
 
-void vector_insert(vector* v, size_t idx, void* val) {  // 改为 void*
+void vector_insert(vector* v, size_t idx, void* val) {  // changed to void*
     if (!v || idx > v->size) return;
     if (v->size >= v->capacity) grow(v);
     if (idx < v->size) {
@@ -169,16 +172,16 @@ void vector_reverse(vector* v) {
 }
 
 
-// int 向量
+// int vector
 VECTOR_IMPLEMENT_BASIC(int, int)
 
-// float 向量
+// float vector
 VECTOR_IMPLEMENT_BASIC(float, flt)
 
-// double 向量
+// double vector
 VECTOR_IMPLEMENT_BASIC(double, dub)
 
-// str 向量 - 需要正确的比较函数签名
+// str vector - requires correct comparison function signature
 static int str_compare(const void* a, const void* b) {
     const str* sa = (str*)a;
     const str* sb = (str*)b;

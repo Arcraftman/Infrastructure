@@ -1,24 +1,31 @@
 #include "logger.h"
 
-
-/* 日志级别名称 */
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <pthread.h>
+#include <sys/stat.h>
 static const char* level_names[] = {
     "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
 };
 
-/* 日志级别颜色 */
+/* Log level colors */
 static const char* level_colors[] = {
     COLOR_TRACE, COLOR_DEBUG, COLOR_INFO, COLOR_WARN, COLOR_ERROR, COLOR_FATAL
 };
 
-/* 日志文件信息 */
+/* Log file information */
 typedef struct {
     FILE* fp;
     char* file_path;
     int current_size;
 } log_file_t;
 
-/* 全局日志状态 */
+/* Global log state */
 typedef struct {
     log_config_t config;
     log_file_t log_file;
@@ -28,10 +35,10 @@ typedef struct {
     time_t last_flush_time;
 } log_state_t;
 
-/* 线程本地缓冲区 */
+/* Thread-local buffer */
 static __thread char g_thread_buffer[THREAD_BUFFER_SIZE];
 
-/* 全局状态 */
+/* Global state */
 static log_state_t g_state = {
     .mutex = PTHREAD_MUTEX_INITIALIZER,
     .initialized = 0,
@@ -40,7 +47,7 @@ static log_state_t g_state = {
     .log_file = {NULL, NULL, 0}
 };
 
-/* 获取当前时间字符串 */
+/* Get timestamp string */
 static void get_timestamp(char* buffer, size_t size, int with_ms) {
     struct timeval tv;
     struct tm tm;
@@ -58,7 +65,7 @@ static void get_timestamp(char* buffer, size_t size, int with_ms) {
     }
 }
 
-/* 获取文件名（去掉路径） */
+/* Extract filename from path */
 static const char* get_filename(const char* path) {
     const char* filename = strrchr(path, '/');
 #ifdef _MSC_VER
@@ -67,7 +74,7 @@ static const char* get_filename(const char* path) {
     return filename ? filename + 1 : path;
 }
 
-/* 检查并执行日志轮转 */
+/* Check and perform log rotation */
 static void check_log_rotation(void) {
     if (!g_state.config.max_file_size || !g_state.config.max_file_count) {
         return;
@@ -78,13 +85,13 @@ static void check_log_rotation(void) {
         return;
     }
     
-    /* 关闭当前文件 */
+    /* Close current file */
     if (g_state.log_file.fp) {
         fclose(g_state.log_file.fp);
         g_state.log_file.fp = NULL;
     }
     
-    /* 轮转旧文件 */
+    /* Rotate old files */
     char old_path[512];
     char new_path[512];
     
@@ -99,11 +106,11 @@ static void check_log_rotation(void) {
         }
     }
     
-    /* 重命名当前文件为 .1 */
+    /* Rename current file to .1 */
     snprintf(new_path, sizeof(new_path), "%s.1", g_state.log_file.file_path);
     rename(g_state.log_file.file_path, new_path);
     
-    /* 重新打开日志文件 */
+    /* Reopen log file */
     g_state.log_file.fp = fopen(g_state.log_file.file_path, "a");
     if (g_state.log_file.fp) {
         setvbuf(g_state.log_file.fp, NULL, _IOLBF, 0);
@@ -111,14 +118,14 @@ static void check_log_rotation(void) {
     }
 }
 
-/* 写入日志到文件 */
+/* Write log to file */
 static void write_to_file(const char* buffer, size_t len) {
     if (!g_state.log_file.fp) return;
     
     fwrite(buffer, 1, len, g_state.log_file.fp);
     g_state.log_file.current_size += len;
     
-    /* 检查是否需要轮转 */
+    /* Check if rotation needed */
     if (g_state.config.max_file_size > 0 && 
         g_state.config.max_file_count > 0 &&
         g_state.log_file.current_size >= g_state.config.max_file_size * 1024 * 1024) {
@@ -126,12 +133,12 @@ static void write_to_file(const char* buffer, size_t len) {
     }
 }
 
-/* 写入日志到控制台 */
+/* Write log to console */
 static void write_to_console(const char* buffer, size_t len) {
     fwrite(buffer, 1, len, stdout);
 }
 
-/* 刷新缓冲区 */
+/* Flush buffer */
 static void flush_buffer(void) {
     if (g_state.log_file.fp) {
         fflush(g_state.log_file.fp);
@@ -142,7 +149,7 @@ static void flush_buffer(void) {
     g_state.last_flush_time = time(NULL);
 }
 
-/* 核心日志写入 */
+/* Core log writer */
 static void write_log(const char* buffer, size_t len) {
     if (!buffer || len == 0 || !g_state.initialized) return;
     
@@ -156,7 +163,7 @@ static void write_log(const char* buffer, size_t len) {
         write_to_console(buffer, len);
     }
     
-    /* 定期刷新 */
+    /* Periodic flush */
     if (g_state.config.flush_interval > 0) {
         time_t now = time(NULL);
         if (now - g_state.last_flush_time >= g_state.config.flush_interval) {
@@ -169,7 +176,7 @@ static void write_log(const char* buffer, size_t len) {
     pthread_mutex_unlock(&g_state.mutex);
 }
 
-/* 内部日志函数（避免在初始化时使用宏） */
+/* Internal logger (avoid macros before init) */
 static void internal_log(log_level_t level, const char* format, ...) {
     if (!g_state.initialized || !g_state.enabled || level < g_state.config.log_level) {
         return;
@@ -180,7 +187,7 @@ static void internal_log(log_level_t level, const char* format, ...) {
     int remaining = THREAD_BUFFER_SIZE - 1;
     int written = 0;
     
-    /* 时间戳 */
+    /* Timestamp */
     if (g_state.config.enable_timestamp) {
         char timestamp[TIME_STRING_SIZE];
         get_timestamp(timestamp, sizeof(timestamp), g_state.config.enable_ms);
@@ -189,29 +196,29 @@ static void internal_log(log_level_t level, const char* format, ...) {
         remaining -= written;
     }
     
-    /* 日志级别 */
+    /* Log level */
     written = snprintf(ptr, remaining, "[%-5s] ", level_names[level]);
     ptr += written;
     remaining -= written;
     
-    /* 用户消息 */
+    /* User message */
     va_list args;
     va_start(args, format);
     written = vsnprintf(ptr, remaining, format, args);
     va_end(args);
     ptr += (written < remaining) ? written : remaining;
     
-    /* 换行 */
+    /* Newline */
     if (remaining > 0) {
         *ptr++ = '\n';
         *ptr = '\0';
     }
     
-    /* 写入日志 */
+    /* Write log */
     write_log(buffer, strlen(buffer));
 }
 
-/* 公共日志写入函数 */
+/* Public log write function */
 void log_write(log_level_t level, const char* filename, 
                    int line, const char* func, const char* format, ...) {
     if (!g_state.initialized || !g_state.enabled || level < g_state.config.log_level) {
@@ -223,7 +230,7 @@ void log_write(log_level_t level, const char* filename,
     int remaining = THREAD_BUFFER_SIZE - 1;
     int written = 0;
     
-    /* 颜色开始 */
+    /* Color start */
     int use_color = g_state.config.enable_color && 
                     (g_state.config.output_option & LOG_OUTPUT_TO_CONSOLE);
     if (use_color) {
@@ -232,7 +239,7 @@ void log_write(log_level_t level, const char* filename,
         remaining -= written;
     }
     
-    /* 时间戳 */
+    /* Timestamp */
     if (g_state.config.enable_timestamp) {
         char timestamp[TIME_STRING_SIZE];
         get_timestamp(timestamp, sizeof(timestamp), g_state.config.enable_ms);
@@ -241,19 +248,19 @@ void log_write(log_level_t level, const char* filename,
         remaining -= written;
     }
     
-    /* 线程ID */
+    /* Thread ID */
     if (g_state.config.enable_thread_id) {
         written = snprintf(ptr, remaining, "[TID:%ld] ", gettid());
         ptr += written;
         remaining -= written;
     }
     
-    /* 日志级别 */
+    /* Log level */
     written = snprintf(ptr, remaining, "[%-5s] ", level_names[level]);
     ptr += written;
     remaining -= written;
     
-    /* 文件名和行号 */
+    /* Filename and line number */
     if (g_state.config.enable_fileline && filename) {
         written = snprintf(ptr, remaining, "[%s:%d] ", 
                           get_filename(filename), line);
@@ -261,27 +268,27 @@ void log_write(log_level_t level, const char* filename,
         remaining -= written;
     }
     
-    /* 函数名 */
+    /* Function name */
     if (g_state.config.enable_function && func && level >= LOG_LEVEL_WARN) {
         written = snprintf(ptr, remaining, "[%s] ", func);
         ptr += written;
         remaining -= written;
     }
-    
-    /* 用户消息 */
+
+    /* User message */
     va_list args;
     va_start(args, format);
     written = vsnprintf(ptr, remaining, format, args);
     va_end(args);
     ptr += (written < remaining) ? written : remaining;
-    
-    /* 换行 */
+
+    /* Newline */
     if (remaining > 0) {
         *ptr++ = '\n';
         *ptr = '\0';
     }
     
-    /* 颜色结束 */
+    /* Color reset */
     if (use_color) {
         char* end = buffer + strlen(buffer);
         if (end < buffer + THREAD_BUFFER_SIZE - sizeof(COLOR_RESET)) {
@@ -289,16 +296,16 @@ void log_write(log_level_t level, const char* filename,
         }
     }
     
-    /* 写入日志 */
+    /* Write log */
     write_log(buffer, strlen(buffer));
     
-    /* 致命错误立即刷新 */
+    /* Fatal: flush immediately */
     if (level == LOG_LEVEL_FATAL) {
         flush_buffer();
     }
 }
 
-/* 打开日志文件 */
+/* Open log file */
 static int open_log_file(void) {
     if (!g_state.config.log_file || !g_state.config.log_file[0]) {
         return -1;
@@ -320,17 +327,17 @@ static int open_log_file(void) {
         return -1;
     }
     
-    /* 设置行缓冲模式 */
+    /* Set line buffering mode */
     setvbuf(g_state.log_file.fp, NULL, _IOLBF, 0);
     
-    /* 获取当前文件大小 */
+    /* Get current file size */
     fseek(g_state.log_file.fp, 0, SEEK_END);
     g_state.log_file.current_size = ftell(g_state.log_file.fp);
     
     return 0;
 }
 
-/* 关闭日志文件 */
+/* Close log file */
 static void close_log_file(void) {
     if (g_state.log_file.fp) {
         fflush(g_state.log_file.fp);
@@ -344,16 +351,16 @@ static void close_log_file(void) {
     }
 }
 
-/* 初始化日志系统 */
+/* Initialize logger */
 int log_init(log_config_t* config) {
     if (!config) return -1;
     
     pthread_mutex_lock(&g_state.mutex);
     
-    /* 复制配置 */
+    /* Copy configuration */
     memcpy(&g_state.config, config, sizeof(log_config_t));
     
-    /* 设置默认值 */
+    /* Set defaults */
     if (g_state.config.buffer_size <= 0) {
         g_state.config.buffer_size = DEFAULT_BUFFER_SIZE;
     }
@@ -364,7 +371,7 @@ int log_init(log_config_t* config) {
         g_state.config.output_option = LOG_OUTPUT_TO_CONSOLE;
     }
     
-    /* 初始化日志文件 */
+    /* Initialize log file */
     if ((g_state.config.output_option & LOG_OUTPUT_TO_FILE) && 
         g_state.config.log_file) {
         if (open_log_file() != 0) {
@@ -379,13 +386,13 @@ int log_init(log_config_t* config) {
     
     pthread_mutex_unlock(&g_state.mutex);
     
-    /* 使用内部函数记录初始化成功（避免宏展开问题） */
+    /* Use internal function to avoid macro expansion issues */
     internal_log(LOG_LEVEL_INFO, "Logger initialized successfully");
     
     return 0;
 }
 
-/* 关闭日志系统 */
+/* Shutdown logger */
 void log_close(void) {
     if (!g_state.initialized) return;
     
@@ -401,22 +408,22 @@ void log_close(void) {
     pthread_mutex_unlock(&g_state.mutex);
 }
 
-/* 重新加载配置 */
+/* Reload configuration */
 int log_reload(log_config_t* config) {
     if (!config || !g_state.initialized) return -1;
     
     pthread_mutex_lock(&g_state.mutex);
     
-    /* 更新配置 */
+    /* Update configuration */
     log_level_t old_level = g_state.config.log_level;
     memcpy(&g_state.config, config, sizeof(log_config_t));
     
-    /* 保持原来的日志级别如果没有指定 */
+    /* Preserve old level if not specified */
     if (config->log_level == 0 && old_level != 0) {
         g_state.config.log_level = old_level;
     }
     
-    /* 重新打开日志文件 */
+    /* Reopen log file */
     if (g_state.config.output_option & LOG_OUTPUT_TO_FILE) {
         close_log_file();
         open_log_file();
@@ -429,22 +436,22 @@ int log_reload(log_config_t* config) {
     return 0;
 }
 
-/* 设置日志级别 */
+/* Set log level */
 void log_set_level(log_level_t level) {
     g_state.config.log_level = level;
 }
 
-/* 获取当前日志级别 */
+/* Get current log level */
 log_level_t log_get_level(void) {
     return g_state.config.log_level;
 }
 
-/* 刷新缓冲区 */
+/* Flush buffer */
 void log_flush(void) {
     flush_buffer();
 }
 
-/* 检查级别是否启用 */
+/* Check if level is enabled */
 int log_is_enabled(log_level_t level) {
     return g_state.initialized && g_state.enabled && level >= g_state.config.log_level;
 }

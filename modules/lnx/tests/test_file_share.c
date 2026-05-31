@@ -14,7 +14,7 @@
 #define LOG_FILE    "test_append.log"
 #define BUFFER_SIZE 256
 
-// ==================== 辅助函数 ====================
+// ==================== Helper functions ====================
 
 void reset_test_file(const char* path, const char* content)
 {
@@ -43,7 +43,7 @@ void show_file(const char* path)
     ssize_t read_data_n = read(fd, buffer, sizeof(buffer) - 1);
     if (read_data_n > 0) {
         buffer[read_data_n] = '\0';
-        printf("文件内容: \"%s\"\n", buffer);
+        printf("File content: \"%s\"\n", buffer);
     }
 
     close(fd);
@@ -64,7 +64,7 @@ void print_offset(int fd, const char* desc)
     if (offset == -1) {
         perror("lseek failed: ");
     } else {
-        printf("%s: 当前文件偏移量 = %ld\n", desc, offset);
+        printf("%s: current offset = %ld\n", desc, offset);
     }
 }
 
@@ -76,7 +76,7 @@ void print_flags(int fd, const char* desc)
         return;
     }
 
-    printf("%s: 文件状态标志 = ", desc);
+    printf("%s: file status flags = ", desc);
     switch (val & O_ACCMODE) {
         case O_RDONLY: printf("O_RDONLY"); break;
         case O_WRONLY: printf("O_WRONLY"); break;
@@ -90,11 +90,11 @@ void print_flags(int fd, const char* desc)
     printf("\n");
 }
 
-// ==================== 测试1: dup 共享文件表项 ====================
+// ==================== Test 1: dup shares file table entry ====================
 
 void test_dup_share(void)
 {
-    printf("\n========== 测试1: dup 复制文件描述符（共享文件表项） ==========\n");
+    printf("\n========== Test 1: dup copies fd (shares file table entry) ==========\n");
 
     reset_test_file(TEST_FILE, "AAAAAA\n");
 
@@ -105,37 +105,37 @@ void test_dup_share(void)
     }
 
     int fd2 = dup(fd1);
-    printf("open 返回 fd1 = %d, dup 返回 fd2 = %d\n", fd1, fd2);
-    printf("两个描述符指向同一个文件表项\n\n");
+    printf("open returned fd1 = %d, dup returned fd2 = %d\n", fd1, fd2);
+    printf("Both descriptors point to the same file table entry\n\n");
 
-    print_offset(fd1, "fd1 初始偏移");
-    print_offset(fd2, "fd2 初始偏移");
+    print_offset(fd1, "fd1 initial offset");
+    print_offset(fd2, "fd2 initial offset");
 
     const char* data1 = "BBBBBB\n";
     write(fd1, data1, strlen(data1));
-    printf("\n通过 fd1 写入 \"%s\" 后:\n", data1);
-    print_offset(fd1, "fd1 偏移");
-    print_offset(fd2, "fd2 偏移");
+    printf("\nAfter writing \"%s\" via fd1:\n", data1);
+    print_offset(fd1, "fd1 offset");
+    print_offset(fd2, "fd2 offset");
 
     const char* data2 = "CCCCCC\n";
     write(fd2, data2, strlen(data2));
-    printf("\n通过 fd2 写入 \"%s\" 后:\n", data2);
-    print_offset(fd1, "fd1 偏移");
-    print_offset(fd2, "fd2 偏移");
+    printf("\nAfter writing \"%s\" via fd2:\n", data2);
+    print_offset(fd1, "fd1 offset");
+    print_offset(fd2, "fd2 offset");
 
     show_file(TEST_FILE);
 
-    printf("\n结论: dup 后两个描述符指向同一个文件表项，共享偏移量\n");
+    printf("\nConclusion: After dup, both descriptors share the same file table entry and offset\n");
 
     close(fd1);
     close(fd2);
 }
 
-// ==================== 测试2: fork 共享文件表项 ====================
+// ==================== Test 2: fork shares file table entry ====================
 
 void test_fork_share(void)
 {
-    printf("\n========== 测试2: fork 后父子进程共享文件表项 ==========\n");
+    printf("\n========== Test 2: parent and child share file table entry after fork ==========\n");
 
     reset_test_file(TEST_FILE, "START\n");
 
@@ -145,7 +145,7 @@ void test_fork_share(void)
         return;
     }
 
-    printf("父进程打开文件，fd = %d\n", fd);
+    printf("Parent opened file, fd = %d\n", fd);
 
     pid_t pid = fork();
 
@@ -156,13 +156,13 @@ void test_fork_share(void)
     }
 
     if (pid == 0) {
-        printf("\n[子进程 PID = %d]\n", getpid());
-        print_offset(fd, "子进程初始偏移");
+        printf("\n[Child PID = %d]\n", getpid());
+        print_offset(fd, "child initial offset");
 
         const char* child_data = "CHILD\n";
         write(fd, child_data, strlen(child_data));
-        printf("子进程写入 \"%s\"\n", child_data);
-        print_offset(fd, "子进程写入后偏移");
+        printf("Child wrote \"%s\"\n", child_data);
+        print_offset(fd, "child offset after write");
 
         close(fd);
         exit(0);
@@ -170,26 +170,26 @@ void test_fork_share(void)
         wait(NULL);
 
         sleep(5);
-        printf("\n[父进程 PID = %d]\n", getpid());
-        print_offset(fd, "父进程偏移");
+        printf("\n[Parent PID = %d]\n", getpid());
+        print_offset(fd, "parent offset");
 
         const char* parent_data = "PARENT\n";
         write(fd, parent_data, strlen(parent_data));
-        printf("父进程写入 \"%s\"\n", parent_data);
-        print_offset(fd, "父进程写入后偏移");
+        printf("Parent wrote \"%s\"\n", parent_data);
+        print_offset(fd, "parent offset after write");
 
         show_file(TEST_FILE);
         close(fd);
     }
 
-    printf("\n结论: fork 后父子进程共享同一个文件表项，偏移量互相影响\n");
+    printf("\nConclusion: After fork, parent and child share the same file table entry, offsets affect each other\n");
 }
 
-// ==================== 测试3: 多次 open 独立文件表项 ====================
+// ==================== Test 3: multiple open creates independent entries ====================
 
 void test_multiopen_independent(void)
 {
-    printf("\n========== 测试3: 多次 open 获得独立的文件表项 ==========\n");
+    printf("\n========== Test 3: multiple open creates independent file table entries ==========\n");
 
     reset_test_file(TEST_FILE, "111111\n");
 
@@ -202,37 +202,37 @@ void test_multiopen_independent(void)
     }
 
     printf("fd1 = %d, fd2 = %d\n", fd1, fd2);
-    printf("两个描述符指向不同的文件表项，但共享同一个 inode (inode = %lu)\n\n",
+    printf("Both descriptors point to different file table entries but share the same inode (inode = %lu)\n\n",
            get_inode(TEST_FILE));
 
-    print_offset(fd1, "fd1 初始偏移");
-    print_offset(fd2, "fd2 初始偏移");
+    print_offset(fd1, "fd1 initial offset");
+    print_offset(fd2, "fd2 initial offset");
 
     const char* data1 = "222222\n";
     write(fd1, data1, strlen(data1));
-    printf("\n通过 fd1 写入 \"%s\" 后:\n", data1);
-    print_offset(fd1, "fd1 偏移");
-    print_offset(fd2, "fd2 偏移（不变）");
+    printf("\nAfter writing \"%s\" via fd1:\n", data1);
+    print_offset(fd1, "fd1 offset");
+    print_offset(fd2, "fd2 offset (unchanged)");
 
     const char* data2 = "333333\n";
     write(fd2, data2, strlen(data2));
-    printf("\n通过 fd2 写入 \"%s\" 后:\n", data2);
-    print_offset(fd1, "fd1 偏移");
-    print_offset(fd2, "fd2 偏移");
+    printf("\nAfter writing \"%s\" via fd2:\n", data2);
+    print_offset(fd1, "fd1 offset");
+    print_offset(fd2, "fd2 offset");
 
     show_file(TEST_FILE);
 
-    printf("\n结论: 每次 open 创建独立的文件表项，偏移量互不影响\n");
+    printf("\nConclusion: Each open creates an independent file table entry, offsets do not affect each other\n");
 
     close(fd1);
     close(fd2);
 }
 
-// ==================== 测试4: O_APPEND 原子追加 ====================
+// ==================== Test 4: O_APPEND atomic append ====================
 
 void test_append_atomic(void)
 {
-    printf("\n========== 测试4: O_APPEND 原子追加 ==========\n");
+    printf("\n========== Test 4: O_APPEND atomic append ==========\n");
 
     int fd = open(LOG_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0644);
     if (fd < 0) {
@@ -240,7 +240,7 @@ void test_append_atomic(void)
         return;
     }
 
-    print_flags(fd, "打开时设置 O_APPEND");
+    print_flags(fd, "opened with O_APPEND");
 
     for (int i = 0; i < 3; i++) {
         pid_t pid = fork();
@@ -260,25 +260,25 @@ void test_append_atomic(void)
     while (wait(NULL) > 0);
     close(fd);
 
-    printf("\n3个子进程各写入5行，O_APPEND 保证原子性，数据不会覆盖\n");
+    printf("\n3 child processes each write 5 lines. O_APPEND guarantees atomicity, no overwrites\n");
 
     FILE* fp = fopen(LOG_FILE, "r");
     if (fp) {
         char line[BUFFER_SIZE];
         int count = 0;
         while (fgets(line, sizeof(line), fp)) count++;
-        printf("实际写入行数: %d\n", count);
+        printf("Lines actually written: %d\n", count);
         fclose(fp);
     }
 
-    printf("\n结论: O_APPEND 使 write 原子地移到文件末尾再写\n");
+    printf("\nConclusion: O_APPEND makes write atomically seek to end then write\n");
 }
 
-// ==================== 测试5: lseek+write 竞争条件 ====================
+// ==================== Test 5: lseek+write race condition ====================
 
 void test_race_condition(void)
 {
-    printf("\n========== 测试5: 非原子 lseek+write 竞争条件 ==========\n");
+    printf("\n========== Test 5: Non-atomic lseek+write race condition ==========\n");
 
     reset_test_file(LOG_FILE, NULL);
 
@@ -288,7 +288,7 @@ void test_race_condition(void)
         return;
     }
 
-    printf("未使用 O_APPEND，使用 lseek+write 两个独立调用\n");
+    printf("Without O_APPEND, using two separate calls lseek+write\n");
 
     for (int i = 0; i < 3; i++) {
         pid_t pid = fork();
@@ -309,25 +309,25 @@ void test_race_condition(void)
     while (wait(NULL) > 0);
     close(fd);
 
-    printf("\nlseek+write 不是原子操作，数据可能被覆盖\n");
+    printf("\nlseek+write is not atomic, data may be overwritten\n");
 
     FILE* fp = fopen(LOG_FILE, "r");
     if (fp) {
         char line[BUFFER_SIZE];
         int count = 0;
         while (fgets(line, sizeof(line), fp)) count++;
-        printf("实际写入行数: %d (预期15行，可能少于15)\n", count);
+        printf("Lines actually written: %d (expected 15, may be less)\n", count);
         fclose(fp);
     }
 
-    printf("\n结论: 多个进程并发 lseek+write 会导致数据覆盖\n");
+    printf("\nConclusion: Concurrent lseek+write from multiple processes causes data overwrite\n");
 }
 
-// ==================== 测试6: fcntl 获取/设置标志 ====================
+// ==================== Test 6: fcntl get/set flags ====================
 
 void test_fcntl_flags(void)
 {
-    printf("\n========== 测试6: fcntl 获取/设置文件状态标志 ==========\n");
+    printf("\n========== Test 6: fcntl get/set file status flags ==========\n");
 
     int fd = open(TEST_FILE, O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
@@ -335,33 +335,33 @@ void test_fcntl_flags(void)
         return;
     }
 
-    print_flags(fd, "初始标志");
+    print_flags(fd, "initial flags");
 
     int val = fcntl(fd, F_GETFL, 0);
     val |= O_APPEND;
     fcntl(fd, F_SETFL, val);
-    print_flags(fd, "设置 O_APPEND 后");
+    print_flags(fd, "after setting O_APPEND");
 
     val = fcntl(fd, F_GETFL, 0);
     val |= O_SYNC;
     fcntl(fd, F_SETFL, val);
-    print_flags(fd, "设置 O_SYNC 后");
+    print_flags(fd, "after setting O_SYNC");
 
     val = fcntl(fd, F_GETFL, 0);
     val &= ~O_APPEND;
     fcntl(fd, F_SETFL, val);
-    print_flags(fd, "清除 O_APPEND 后");
+    print_flags(fd, "after clearing O_APPEND");
 
-    printf("\n结论: fcntl 可以在不关闭文件的情况下修改状态标志\n");
+    printf("\nConclusion: fcntl can modify status flags without closing the file\n");
 
     close(fd);
 }
 
-// ==================== 测试7: fsync 延迟写 ====================
+// ==================== Test 7: fsync delayed write ====================
 
 void test_fsync_delayed_write(void)
 {
-    printf("\n========== 测试7: 延迟写与 fsync ==========\n");
+    printf("\n========== Test 7: Delayed write and fsync ==========\n");
 
     reset_test_file(TEST_FILE, NULL);
 
@@ -374,36 +374,36 @@ void test_fsync_delayed_write(void)
     const char* data = "Data in buffer cache\n";
     size_t len = strlen(data);
 
-    printf("1. write: 数据进入内核缓冲区\n");
+    printf("1. write: data goes to kernel buffer cache\n");
     clock_t start = clock();
     write(fd, data, len);
     clock_t end = clock();
-    printf("   write 耗时: %.6f 秒\n", (double)(end - start) / CLOCKS_PER_SEC);
+    printf("   write took: %.6f s\n", (double)(end - start) / CLOCKS_PER_SEC);
 
-    printf("\n2. fsync: 强制写入磁盘并等待\n");
+    printf("\n2. fsync: force to disk and wait\n");
     start = clock();
     if (fsync(fd) == 0) {
         end = clock();
-        printf("   fsync 耗时: %.6f 秒\n", (double)(end - start) / CLOCKS_PER_SEC);
+        printf("   fsync took: %.6f s\n", (double)(end - start) / CLOCKS_PER_SEC);
     }
 
-    printf("\n3. sync: 排入队列，不等待\n");
+    printf("\n3. sync: enqueue, do not wait\n");
     start = clock();
     sync();
     end = clock();
-    printf("   sync 耗时: %.6f 秒\n", (double)(end - start) / CLOCKS_PER_SEC);
+    printf("   sync took: %.6f s\n", (double)(end - start) / CLOCKS_PER_SEC);
 
-    printf("\n结论: write 延迟写，fsync 强制落盘，sync 仅排入队列\n");
+    printf("\nConclusion: write is delayed, fsync flushes to disk, sync only enqueues\n");
 
     close(fd);
 }
 
-// ==================== 主函数 ====================
+// ==================== Main ====================
 
 int main(int argc, char* argv[])
 {
     if (argc != 2) {
-        printf("用法: %s [dup|fork|multiopen|append|race|fcntl|fsync|all]\n", argv[0]);
+        printf("Usage: %s [dup|fork|multiopen|append|race|fcntl|fsync|all]\n", argv[0]);
         return 1;
     }
 
@@ -429,9 +429,9 @@ int main(int argc, char* argv[])
         test_race_condition();
         test_fcntl_flags();
         test_fsync_delayed_write();
-        printf("\n========== 所有测试完成 ==========\n");
+        printf("\n========== All tests completed ==========\n");
     } else {
-        printf("未知选项: %s\n", argv[1]);
+        printf("Unknown option: %s\n", argv[1]);
     }
 
     unlink(TEST_FILE);

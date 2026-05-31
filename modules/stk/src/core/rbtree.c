@@ -1,6 +1,8 @@
 // stk_rbtree.c
 
 #include "rbtree.h"
+#include <stdlib.h>
+#include <string.h>
 
 static rbnode* node_new(void* val, rbnode* nil) {
     rbnode* n = (rbnode*)malloc(sizeof(rbnode));

@@ -6,21 +6,21 @@
 #include "str.h"
 
 
-// 链表节点
+// Linked list node
 typedef struct list_node {
     void* data;
     struct list_node* prev;
     struct list_node* next;
 } list_node;
 
-// 链表结构
+// Linked list structure
 typedef struct list {
     list_node* head;
     list_node* tail;
     size_t size;
 } list;
 
-// 核心操作
+// Core operations
 STK_API void list_init(list* l);
 STK_API void list_free(list* l);
 STK_API void list_push_front(list* l, void* val);
