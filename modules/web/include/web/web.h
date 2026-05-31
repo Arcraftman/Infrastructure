@@ -47,4 +47,20 @@
 #include "web/server.h"
 #include "web/ws.h"
 
+/* Extended HTTP components */
+#include "web/uri.h"
+#include "web/cookie.h"
+#include "web/form.h"
+#include "web/compress.h"
+#include "web/router.h"
+#include "web/middleware.h"
+#include "web/auth.h"
+#include "web/cors.h"
+#include "web/threadpool.h"
+#include "web/client.h"
+#include "web/cache.h"
+#include "web/accesslog.h"
+#include "web/ratelimit.h"
+#include "web/session.h"
+
 #endif /* WEB_H */
