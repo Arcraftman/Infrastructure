@@ -1,4 +1,4 @@
-#include "stk/util.h"
+#include "stk/utils/other.h"
 
 #include <ctype.h>
 #include <stdlib.h>

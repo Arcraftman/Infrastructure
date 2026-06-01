@@ -1,43 +1,40 @@
-#ifndef STK_SRC_CORE_LIST_H
-#define STK_SRC_CORE_LIST_H
+#ifndef STK_CORE_LIST_H
+#define STK_CORE_LIST_H
 
-#include "config.h"
+#include "stk/core/preset.h"
 #include "detail/list.h"
-#include "str.h"
 
 
 // Linked list node
-typedef struct list_node {
+typedef struct stk_list_node {
     void* data;
-    struct list_node* prev;
-    struct list_node* next;
-} list_node;
+    struct stk_list_node* prev;
+    struct stk_list_node* next;
+} stk_list_node;
 
 // Linked list structure
-typedef struct list {
-    list_node* head;
-    list_node* tail;
+typedef struct stk_list {
+    stk_list_node* head;
+    stk_list_node* tail;
     size_t size;
-} list;
+} stk_list;
 
 // Core operations
-STK_API void list_init(list* l);
-STK_API void list_free(list* l);
-STK_API void list_push_front(list* l, void* val);
-STK_API void list_push_back(list* l, void* val);
-STK_API void list_pop_front(list* l);
-STK_API void list_pop_back(list* l);
-STK_API void* list_front(list* l);
-STK_API void* list_back(list* l);
-STK_API void* list_get(list* l, size_t idx);
-STK_API void list_set(list* l, size_t idx, void* val);
-STK_API void list_insert(list* l, size_t idx, void* val);
-STK_API void list_erase(list* l, size_t idx);
-STK_API size_t list_len(list* l);
-STK_API bool list_empty(list* l);
-STK_API void list_clear(list* l);
-
-LIST_DECLARE_STRUCT(str,str)
+STK_API void stk_list_init(stk_list* l);
+STK_API void stk_list_free(stk_list* l);
+STK_API void stk_list_push_front(stk_list* l, void* val);
+STK_API void stk_list_push_back(stk_list* l, void* val);
+STK_API void stk_list_pop_front(stk_list* l);
+STK_API void stk_list_pop_back(stk_list* l);
+STK_API void* stk_list_front(stk_list* l);
+STK_API void* stk_list_back(stk_list* l);
+STK_API void* stk_list_get(stk_list* l, size_t idx);
+STK_API void stk_list_set(stk_list* l, size_t idx, void* val);
+STK_API void stk_list_insert(stk_list* l, size_t idx, void* val);
+STK_API void stk_list_erase(stk_list* l, size_t idx);
+STK_API size_t stk_list_len(stk_list* l);
+STK_API bool stk_list_empty(stk_list* l);
+STK_API void stk_list_clear(stk_list* l);
 
 
 #endif

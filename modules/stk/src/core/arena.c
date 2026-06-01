@@ -4,9 +4,9 @@
 
 #define ALIGN_UP(x, a) (((x) + (a) - 1) & ~((size_t)(a) - 1))
 
-static arena_block *block_create(arena *a, size_t min_size) {
+static stk_arena_block *block_create(stk_arena *a, size_t min_size) {
     size_t cap = (min_size > a->block_size) ? min_size : a->block_size;
-    arena_block *blk = (arena_block *)a->malloc_fn(sizeof(arena_block) + cap);
+    stk_arena_block *blk = (stk_arena_block *)a->malloc_fn(sizeof(stk_arena_block) + cap);
     if (!blk) return NULL;
     blk->next     = NULL;
     blk->used     = 0;
@@ -15,12 +15,12 @@ static arena_block *block_create(arena *a, size_t min_size) {
     return blk;
 }
 
-void arena_init(arena *a, size_t block_size) {
-    arena_init_custom(a, block_size, malloc, free);
+void stk_arena_init(stk_arena *a, size_t block_size) {
+    stk_arena_init_custom(a, block_size, malloc, free);
 }
 
-void arena_init_custom(arena *a, size_t block_size,
-                        void *(*malloc_fn)(size_t), void (*free_fn)(void *)) {
+void stk_arena_init_custom(stk_arena *a, size_t block_size,
+                            void *(*malloc_fn)(size_t), void (*free_fn)(void *)) {
     a->head           = NULL;
     a->current        = NULL;
     a->block_size     = block_size > 0 ? block_size : 8192;
@@ -29,10 +29,10 @@ void arena_init_custom(arena *a, size_t block_size,
     a->free_fn        = free_fn;
 }
 
-void arena_free(arena *a) {
-    arena_block *blk = a->head;
+void stk_arena_free(stk_arena *a) {
+    stk_arena_block *blk = a->head;
     while (blk) {
-        arena_block *next = blk->next;
+        stk_arena_block *next = blk->next;
         a->free_fn(blk);
         blk = next;
     }
@@ -41,11 +41,11 @@ void arena_free(arena *a) {
     a->total_allocated = 0;
 }
 
-void *arena_alloc(arena *a, size_t size) {
+void *stk_arena_alloc(stk_arena *a, size_t size) {
     if (!a || size == 0) return NULL;
     size = ALIGN_UP(size, sizeof(void *));
     if (!a->current || a->current->used + size > a->current->capacity) {
-        arena_block *blk = block_create(a, size + sizeof(arena_block));
+        stk_arena_block *blk = block_create(a, size + sizeof(stk_arena_block));
         if (!blk) return NULL;
         if (a->current)
             a->current->next = blk;
@@ -58,11 +58,11 @@ void *arena_alloc(arena *a, size_t size) {
     return ptr;
 }
 
-void *arena_alloc_aligned(arena *a, size_t size, size_t align) {
-    if (align <= sizeof(void *)) return arena_alloc(a, size);
+void *stk_arena_alloc_aligned(stk_arena *a, size_t size, size_t align) {
+    if (align <= sizeof(void *)) return stk_arena_alloc(a, size);
     /* Reserve extra alignment bytes, then align the pointer forward */
     size_t extra = align - 1;
-    void *base = arena_alloc(a, size + extra);
+    void *base = stk_arena_alloc(a, size + extra);
     if (!base) return NULL;
     uintptr_t addr = (uintptr_t)base;
     uintptr_t aligned = ALIGN_UP(addr, align);
@@ -73,17 +73,17 @@ void *arena_alloc_aligned(arena *a, size_t size, size_t align) {
     return (void *)aligned;
 }
 
-char *arena_dup_str(arena *a, const char *s) {
+char *stk_arena_dup_str(stk_arena *a, const char *s) {
     if (!s) return NULL;
     size_t n = strlen(s) + 1;
-    char *p = (char *)arena_alloc(a, n);
+    char *p = (char *)stk_arena_alloc(a, n);
     if (p) memcpy(p, s, n);
     return p;
 }
 
-char *arena_dup_strn(arena *a, const char *s, size_t n) {
+char *stk_arena_dup_strn(stk_arena *a, const char *s, size_t n) {
     if (!s) return NULL;
-    char *p = (char *)arena_alloc(a, n + 1);
+    char *p = (char *)stk_arena_alloc(a, n + 1);
     if (p) {
         memcpy(p, s, n);
         p[n] = '\0';
@@ -91,8 +91,8 @@ char *arena_dup_strn(arena *a, const char *s, size_t n) {
     return p;
 }
 
-void arena_reset(arena *a) {
-    arena_block *blk = a->head;
+void stk_arena_reset(stk_arena *a) {
+    stk_arena_block *blk = a->head;
     while (blk) {
         blk->used = 0;
         blk = blk->next;
@@ -100,12 +100,12 @@ void arena_reset(arena *a) {
     a->current = a->head;
 }
 
-size_t arena_total_allocated(const arena *a) {
+size_t stk_arena_total_allocated(const stk_arena *a) {
     return a ? a->total_allocated : 0;
 }
 
-size_t arena_block_count(const arena *a) {
+size_t stk_arena_block_count(const stk_arena *a) {
     size_t n = 0;
-    for (arena_block *blk = a->head; blk; blk = blk->next) n++;
+    for (stk_arena_block *blk = a->head; blk; blk = blk->next) n++;
     return n;
 }

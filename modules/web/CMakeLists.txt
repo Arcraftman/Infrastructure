@@ -15,7 +15,7 @@ set(WEB_HTTP_SOURCES
 infra_register_component(web http
     SOURCES ${WEB_HTTP_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -28,7 +28,7 @@ set(WEB_SERVER_SOURCES
 infra_register_component(web server
     SOURCES ${WEB_SERVER_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -41,7 +41,7 @@ set(WEB_MIME_SOURCES
 infra_register_component(web mime
     SOURCES ${WEB_MIME_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -54,7 +54,7 @@ set(WEB_WS_SOURCES
 infra_register_component(web ws
     SOURCES ${WEB_WS_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -66,7 +66,7 @@ set(WEB_URI_SOURCES
 infra_register_component(web uri
     SOURCES ${WEB_URI_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -78,7 +78,7 @@ set(WEB_COOKIE_SOURCES
 infra_register_component(web cookie
     SOURCES ${WEB_COOKIE_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -90,7 +90,7 @@ set(WEB_FORM_SOURCES
 infra_register_component(web form
     SOURCES ${WEB_FORM_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -102,7 +102,7 @@ set(WEB_COMPRESS_SOURCES
 infra_register_component(web compress
     SOURCES ${WEB_COMPRESS_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -114,7 +114,7 @@ set(WEB_ROUTER_SOURCES
 infra_register_component(web router
     SOURCES ${WEB_ROUTER_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -126,7 +126,7 @@ set(WEB_MIDDLEWARE_SOURCES
 infra_register_component(web middleware
     SOURCES ${WEB_MIDDLEWARE_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -138,7 +138,7 @@ set(WEB_AUTH_SOURCES
 infra_register_component(web auth
     SOURCES ${WEB_AUTH_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -150,7 +150,7 @@ set(WEB_CORS_SOURCES
 infra_register_component(web cors
     SOURCES ${WEB_CORS_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -162,7 +162,7 @@ set(WEB_THREADPOOL_SOURCES
 infra_register_component(web threadpool
     SOURCES ${WEB_THREADPOOL_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -174,7 +174,7 @@ set(WEB_CLIENT_SOURCES
 infra_register_component(web client
     SOURCES ${WEB_CLIENT_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -186,7 +186,7 @@ set(WEB_CACHE_SOURCES
 infra_register_component(web cache
     SOURCES ${WEB_CACHE_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -198,7 +198,7 @@ set(WEB_ACCESSLOG_SOURCES
 infra_register_component(web accesslog
     SOURCES ${WEB_ACCESSLOG_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -210,7 +210,7 @@ set(WEB_RATELIMIT_SOURCES
 infra_register_component(web ratelimit
     SOURCES ${WEB_RATELIMIT_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 # ============================================================================
@@ -222,7 +222,7 @@ set(WEB_SESSION_SOURCES
 infra_register_component(web session
     SOURCES ${WEB_SESSION_SOURCES}
     PRIVATE_DIRS
-        ${INFRA_MODULE_WEB_INC_DIR}/../
+        ${INFRA_MODULE_WEB_INC_DIR}
 )
 
 infra_finalize_module(web)

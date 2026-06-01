@@ -1,8 +1,7 @@
-#ifndef STK_BITSET_H
-#define STK_BITSET_H
+#ifndef STK_CORE_BITSET_H
+#define STK_CORE_BITSET_H
 
-#include "stk/def.h"
-#include <stddef.h>
+#include "stk/core/preset.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,12 +15,12 @@ extern "C" {
  *
  * Basic usage:
  * @code
- *   bitset b;
- *   bitset_init(&b, 128);
- *   bitset_set(&b, 42);
- *   bool v = bitset_get(&b, 42);   // true
- *   bitset_clear(&b, 42);
- *   bitset_free(&b);
+ *   stk_bitset b;
+ *   stk_bitset_init(&b, 128);
+ *   stk_bitset_set(&b, 42);
+ *   bool v = stk_bitset_get(&b, 42);   // true
+ *   stk_bitset_clear(&b, 42);
+ *   stk_bitset_free(&b);
  * @endcode
  */
 
@@ -29,41 +28,41 @@ typedef struct {
     size_t *words;     /* array of size_t bit-words */
     size_t  nwords;    /* number of words */
     size_t  nbits;     /* total number of bits */
-} bitset;
+} stk_bitset;
 
 /* Lifetime ------------------------------------------------------------- */
 
-STK_API void   bitset_init(bitset *b, size_t nbits);
-STK_API void   bitset_free(bitset *b);
+STK_API void   stk_bitset_init(stk_bitset *b, size_t nbits);
+STK_API void   stk_bitset_free(stk_bitset *b);
 
 /* Single-bit operations ------------------------------------------------ */
 
-STK_API void   bitset_set(bitset *b, size_t idx);
-STK_API void   bitset_clear(bitset *b, size_t idx);
-STK_API void   bitset_toggle(bitset *b, size_t idx);
-STK_API bool   bitset_get(const bitset *b, size_t idx);
+STK_API void   stk_bitset_set(stk_bitset *b, size_t idx);
+STK_API void   stk_bitset_clear(stk_bitset *b, size_t idx);
+STK_API void   stk_bitset_toggle(stk_bitset *b, size_t idx);
+STK_API bool   stk_bitset_get(const stk_bitset *b, size_t idx);
 
 /* Bulk operations ------------------------------------------------------ */
 
-STK_API void   bitset_set_all(bitset *b);
-STK_API void   bitset_clear_all(bitset *b);
-STK_API void   bitset_negate(bitset *b);
+STK_API void   stk_bitset_set_all(stk_bitset *b);
+STK_API void   stk_bitset_clear_all(stk_bitset *b);
+STK_API void   stk_bitset_negate(stk_bitset *b);
 
 /* Queries -------------------------------------------------------------- */
 
-STK_API size_t bitset_count(const bitset *b);
-STK_API bool   bitset_any(const bitset *b);
-STK_API bool   bitset_none(const bitset *b);
-STK_API bool   bitset_all(const bitset *b);
-STK_API size_t bitset_size(const bitset *b);
+STK_API size_t stk_bitset_count(const stk_bitset *b);
+STK_API bool   stk_bitset_any(const stk_bitset *b);
+STK_API bool   stk_bitset_none(const stk_bitset *b);
+STK_API bool   stk_bitset_all(const stk_bitset *b);
+STK_API size_t stk_bitset_size(const stk_bitset *b);
 
 /* Search --------------------------------------------------------------- */
 
-STK_API size_t bitset_next_set(const bitset *b, size_t start);
-STK_API size_t bitset_next_clear(const bitset *b, size_t start);
+STK_API size_t stk_bitset_next_set(const stk_bitset *b, size_t start);
+STK_API size_t stk_bitset_next_clear(const stk_bitset *b, size_t start);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* STK_BITSET_H */
+#endif /* STK_CORE_BITSET_H */

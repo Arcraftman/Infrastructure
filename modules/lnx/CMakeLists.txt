@@ -14,7 +14,7 @@ if(LNX_KERNEL_SOURCES)
         SOURCES ${LNX_KERNEL_SOURCES}
         PRIVATE_DIRS
             ${LNX_KERNEL_DIR}
-            ${INFRA_MODULE_LNX_INC_DIR}/../
+            ${INFRA_MODULE_LNX_INC_DIR}
     )
 endif()
 
@@ -44,7 +44,7 @@ if(LNX_CORE_EXISTING)
             ${INFRA_MODULE_LNX_SRC_DIR}
             ${INFRA_MODULE_LNX_SRC_DIR}/file
             ${INFRA_MODULE_LNX_SRC_DIR}/sched
-            ${INFRA_MODULE_LNX_INC_DIR}/../
+            ${INFRA_MODULE_LNX_INC_DIR}
     )
 endif()
 

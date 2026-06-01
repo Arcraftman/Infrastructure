@@ -1,5 +1,5 @@
-#ifndef STK_UTIL_H
-#define STK_UTIL_H
+#ifndef STK_UTILS_OTHER_H
+#define STK_UTILS_OTHER_H
 
 #include "stk/def.h"
 #include <stddef.h>
@@ -98,4 +98,4 @@ STK_API uint32_t stk_hash_crc32(const void *data, size_t len);
 }
 #endif
 
-#endif /* STK_UTIL_H */
+#endif /* STK_UTILS_OTHER_H */

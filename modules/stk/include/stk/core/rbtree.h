@@ -1,38 +1,39 @@
 // stk_rbtree.h
 
-#ifndef STK_SRC_CORE_RBTREE_H
-#define STK_SRC_CORE_RBTREE_H
+#ifndef STK_CORE_RBTREE_H
+#define STK_CORE_RBTREE_H
 
-#include "config.h"
+#include "stk/core/preset.h"
+#include "stk/core/internal/rbtree.h"
 
-typedef struct rbnode {
+typedef struct stk_rbnode {
     void* data;
     int color;
-    struct rbnode* left;
-    struct rbnode* right;
-    struct rbnode* parent;
-} rbnode;
+    struct stk_rbnode* left;
+    struct stk_rbnode* right;
+    struct stk_rbnode* parent;
+} stk_rbnode;
 
 typedef struct {
-    rbnode* root;
-    rbnode* nil;
+    stk_rbnode* root;
+    stk_rbnode* nil;
     size_t size;
     int (*compare)(const void* a, const void* b);  // Compare function
-} rbtree;
+} stk_rbtree;
 
-STK_API void rbtree_init(rbtree* t, int (*compare)(const void* a, const void* b));
-STK_API void rbtree_free(rbtree* t);
-STK_API void rbtree_insert(rbtree* t, void* val);
-STK_API void rbtree_remove(rbtree* t, void* val);
-STK_API void* rbtree_find(rbtree* t, void* val);
-STK_API bool rbtree_has(rbtree* t, void* val);
-STK_API bool rbtree_empty(rbtree* t);
-STK_API size_t rbtree_size(rbtree* t);
-STK_API void rbtree_inorder(rbtree* t, void (*visit)(void*));
-STK_API void rbtree_preorder(rbtree* t, void (*visit)(void*));
-STK_API void rbtree_postorder(rbtree* t, void (*visit)(void*));
-STK_API void* rbtree_min(rbtree* t);
-STK_API void* rbtree_max(rbtree* t);
-STK_API void rbtree_clear(rbtree* t);
+STK_API void stk_rbtree_init(stk_rbtree* t, int (*compare)(const void* a, const void* b));
+STK_API void stk_rbtree_free(stk_rbtree* t);
+STK_API void stk_rbtree_insert(stk_rbtree* t, void* val);
+STK_API void stk_rbtree_remove(stk_rbtree* t, void* val);
+STK_API void* stk_rbtree_find(stk_rbtree* t, void* val);
+STK_API bool stk_rbtree_has(stk_rbtree* t, void* val);
+STK_API bool stk_rbtree_empty(stk_rbtree* t);
+STK_API size_t stk_rbtree_size(stk_rbtree* t);
+STK_API void stk_rbtree_inorder(stk_rbtree* t, void (*visit)(void*));
+STK_API void stk_rbtree_preorder(stk_rbtree* t, void (*visit)(void*));
+STK_API void stk_rbtree_postorder(stk_rbtree* t, void (*visit)(void*));
+STK_API void* stk_rbtree_min(stk_rbtree* t);
+STK_API void* stk_rbtree_max(stk_rbtree* t);
+STK_API void stk_rbtree_clear(stk_rbtree* t);
 
 #endif

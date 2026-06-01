@@ -5,7 +5,7 @@
 /* Align element_size up to sizeof(void*) */
 #define POOL_ALIGN(n) (((n) + sizeof(void*) - 1) & ~(sizeof(void*) - 1))
 
-void pool_init(pool *p, size_t element_size, size_t slab_capacity) {
+void stk_pool_init(stk_pool *p, size_t element_size, size_t slab_capacity) {
     p->element_size  = POOL_ALIGN(element_size);
     if (p->element_size < sizeof(void *))
         p->element_size = sizeof(void *);
@@ -16,16 +16,16 @@ void pool_init(pool *p, size_t element_size, size_t slab_capacity) {
     p->total         = 0;
 }
 
-static int pool_add_slab(pool *p) {
-    size_t slab_bytes = sizeof(pool_slab) + p->element_size * p->slab_capacity;
-    pool_slab *slab = (pool_slab *)malloc(slab_bytes);
+static int pool_add_slab(stk_pool *p) {
+    size_t slab_bytes = sizeof(stk_pool_slab) + p->element_size * p->slab_capacity;
+    stk_pool_slab *slab = (stk_pool_slab *)malloc(slab_bytes);
     if (!slab) return -1;
     slab->next = p->slabs;
     p->slabs = slab;
     /* Thread each element onto the freelist */
     char *start = (char *)(slab + 1);
     for (size_t i = 0; i < p->slab_capacity; i++) {
-        pool_free_node *node = (pool_free_node *)(start + i * p->element_size);
+        stk_pool_free_node *node = (stk_pool_free_node *)(start + i * p->element_size);
         node->next = p->freelist;
         p->freelist = node;
     }
@@ -33,10 +33,10 @@ static int pool_add_slab(pool *p) {
     return 0;
 }
 
-void pool_destroy(pool *p) {
-    pool_slab *slab = p->slabs;
+void stk_pool_destroy(stk_pool *p) {
+    stk_pool_slab *slab = p->slabs;
     while (slab) {
-        pool_slab *next = slab->next;
+        stk_pool_slab *next = slab->next;
         free(slab);
         slab = next;
     }
@@ -46,24 +46,24 @@ void pool_destroy(pool *p) {
     p->total     = 0;
 }
 
-void *pool_alloc(pool *p) {
+void *stk_pool_alloc(stk_pool *p) {
     if (!p->freelist) {
         if (pool_add_slab(p) != 0) return NULL;
     }
-    pool_free_node *node = p->freelist;
+    stk_pool_free_node *node = p->freelist;
     p->freelist = node->next;
     p->allocated++;
     return (void *)node;
 }
 
-void pool_free(pool *p, void *element) {
+void stk_pool_free(stk_pool *p, void *element) {
     if (!element) return;
-    pool_free_node *node = (pool_free_node *)element;
+    stk_pool_free_node *node = (stk_pool_free_node *)element;
     node->next = p->freelist;
     p->freelist = node;
     p->allocated--;
 }
 
-size_t pool_element_size(const pool *p) { return p->element_size; }
-size_t pool_allocated(const pool *p)     { return p->allocated; }
-size_t pool_available(const pool *p)     { return p->total - p->allocated; }
+size_t stk_pool_element_size(const stk_pool *p) { return p->element_size; }
+size_t stk_pool_allocated(const stk_pool *p)     { return p->allocated; }
+size_t stk_pool_available(const stk_pool *p)     { return p->total - p->allocated; }

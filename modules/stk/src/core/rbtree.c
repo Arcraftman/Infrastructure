@@ -1,21 +1,28 @@
 // stk_rbtree.c
 
-#include "rbtree.h"
+#include "stk/core/rbtree.h"
 #include <stdlib.h>
 #include <string.h>
 
-static rbnode* node_new(void* val, rbnode* nil) {
-    rbnode* n = (rbnode*)malloc(sizeof(rbnode));
+#define STK_RB_RED   0
+#define STK_RB_BLACK 1
+
+#define STK_RB_DEFAULT_CAPACITY 16
+#define STK_RB_GROW_FACTOR 2
+
+
+static stk_rbnode* node_new(void* val, stk_rbnode* nil) {
+    stk_rbnode* n = (stk_rbnode*)malloc(sizeof(stk_rbnode));
     n->data = val;
-    n->color = RB_RED;
+    n->color = STK_RB_RED;
     n->left = nil;
     n->right = nil;
     n->parent = nil;
     return n;
 }
 
-static void left_rotate(rbtree* t, rbnode* x) {
-    rbnode* y = x->right;
+static void left_rotate(stk_rbtree* t, stk_rbnode* x) {
+    stk_rbnode* y = x->right;
     x->right = y->left;
     if (y->left != t->nil) y->left->parent = x;
     y->parent = x->parent;
@@ -26,8 +33,8 @@ static void left_rotate(rbtree* t, rbnode* x) {
     x->parent = y;
 }
 
-static void right_rotate(rbtree* t, rbnode* y) {
-    rbnode* x = y->left;
+static void right_rotate(stk_rbtree* t, stk_rbnode* y) {
+    stk_rbnode* x = y->left;
     y->left = x->right;
     if (x->right != t->nil) x->right->parent = y;
     x->parent = y->parent;
@@ -38,155 +45,155 @@ static void right_rotate(rbtree* t, rbnode* y) {
     y->parent = x;
 }
 
-static void insert_fixup(rbtree* t, rbnode* z) {
-    while (z->parent->color == RB_RED) {
+static void insert_fixup(stk_rbtree* t, stk_rbnode* z) {
+    while (z->parent->color == STK_RB_RED) {
         if (z->parent == z->parent->parent->left) {
-            rbnode* y = z->parent->parent->right;
-            if (y->color == RB_RED) {
-                z->parent->color = RB_BLACK;
-                y->color = RB_BLACK;
-                z->parent->parent->color = RB_RED;
+            stk_rbnode* y = z->parent->parent->right;
+            if (y->color == STK_RB_RED) {
+                z->parent->color = STK_RB_BLACK;
+                y->color = STK_RB_BLACK;
+                z->parent->parent->color = STK_RB_RED;
                 z = z->parent->parent;
             } else {
                 if (z == z->parent->right) {
                     z = z->parent;
                     left_rotate(t, z);
                 }
-                z->parent->color = RB_BLACK;
-                z->parent->parent->color = RB_RED;
+                z->parent->color = STK_RB_BLACK;
+                z->parent->parent->color = STK_RB_RED;
                 right_rotate(t, z->parent->parent);
             }
         } else {
-            rbnode* y = z->parent->parent->left;
-            if (y->color == RB_RED) {
-                z->parent->color = RB_BLACK;
-                y->color = RB_BLACK;
-                z->parent->parent->color = RB_RED;
+            stk_rbnode* y = z->parent->parent->left;
+            if (y->color == STK_RB_RED) {
+                z->parent->color = STK_RB_BLACK;
+                y->color = STK_RB_BLACK;
+                z->parent->parent->color = STK_RB_RED;
                 z = z->parent->parent;
             } else {
                 if (z == z->parent->left) {
                     z = z->parent;
                     right_rotate(t, z);
                 }
-                z->parent->color = RB_BLACK;
-                z->parent->parent->color = RB_RED;
+                z->parent->color = STK_RB_BLACK;
+                z->parent->parent->color = STK_RB_RED;
                 left_rotate(t, z->parent->parent);
             }
         }
     }
-    t->root->color = RB_BLACK;
+    t->root->color = STK_RB_BLACK;
 }
 
-static rbnode* minimum(rbtree* t, rbnode* n) {
+static stk_rbnode* minimum(stk_rbtree* t, stk_rbnode* n) {
     while (n->left != t->nil) n = n->left;
     return n;
 }
 
-static rbnode* maximum(rbtree* t, rbnode* n) {
+static stk_rbnode* maximum(stk_rbtree* t, stk_rbnode* n) {
     while (n->right != t->nil) n = n->right;
     return n;
 }
 
-static void transplant(rbtree* t, rbnode* u, rbnode* v) {
+static void transplant(stk_rbtree* t, stk_rbnode* u, stk_rbnode* v) {
     if (u->parent == t->nil) t->root = v;
     else if (u == u->parent->left) u->parent->left = v;
     else u->parent->right = v;
     v->parent = u->parent;
 }
 
-static void delete_fixup(rbtree* t, rbnode* x) {
-    while (x != t->root && x->color == RB_BLACK) {
+static void delete_fixup(stk_rbtree* t, stk_rbnode* x) {
+    while (x != t->root && x->color == STK_RB_BLACK) {
         if (x == x->parent->left) {
-            rbnode* w = x->parent->right;
-            if (w->color == RB_RED) {
-                w->color = RB_BLACK;
-                x->parent->color = RB_RED;
+            stk_rbnode* w = x->parent->right;
+            if (w->color == STK_RB_RED) {
+                w->color = STK_RB_BLACK;
+                x->parent->color = STK_RB_RED;
                 left_rotate(t, x->parent);
                 w = x->parent->right;
             }
-            if (w->left->color == RB_BLACK && w->right->color == RB_BLACK) {
-                w->color = RB_RED;
+            if (w->left->color == STK_RB_BLACK && w->right->color == STK_RB_BLACK) {
+                w->color = STK_RB_RED;
                 x = x->parent;
             } else {
-                if (w->right->color == RB_BLACK) {
-                    w->left->color = RB_BLACK;
-                    w->color = RB_RED;
+                if (w->right->color == STK_RB_BLACK) {
+                    w->left->color = STK_RB_BLACK;
+                    w->color = STK_RB_RED;
                     right_rotate(t, w);
                     w = x->parent->right;
                 }
                 w->color = x->parent->color;
-                x->parent->color = RB_BLACK;
-                w->right->color = RB_BLACK;
+                x->parent->color = STK_RB_BLACK;
+                w->right->color = STK_RB_BLACK;
                 left_rotate(t, x->parent);
                 x = t->root;
             }
         } else {
-            rbnode* w = x->parent->left;
-            if (w->color == RB_RED) {
-                w->color = RB_BLACK;
-                x->parent->color = RB_RED;
+            stk_rbnode* w = x->parent->left;
+            if (w->color == STK_RB_RED) {
+                w->color = STK_RB_BLACK;
+                x->parent->color = STK_RB_RED;
                 right_rotate(t, x->parent);
                 w = x->parent->left;
             }
-            if (w->right->color == RB_BLACK && w->left->color == RB_BLACK) {
-                w->color = RB_RED;
+            if (w->right->color == STK_RB_BLACK && w->left->color == STK_RB_BLACK) {
+                w->color = STK_RB_RED;
                 x = x->parent;
             } else {
-                if (w->left->color == RB_BLACK) {
-                    w->right->color = RB_BLACK;
-                    w->color = RB_RED;
+                if (w->left->color == STK_RB_BLACK) {
+                    w->right->color = STK_RB_BLACK;
+                    w->color = STK_RB_RED;
                     left_rotate(t, w);
                     w = x->parent->left;
                 }
                 w->color = x->parent->color;
-                x->parent->color = RB_BLACK;
-                w->left->color = RB_BLACK;
+                x->parent->color = STK_RB_BLACK;
+                w->left->color = STK_RB_BLACK;
                 right_rotate(t, x->parent);
                 x = t->root;
             }
         }
     }
-    x->color = RB_BLACK;
+    x->color = STK_RB_BLACK;
 }
 
-static void destroy_nodes(rbtree* t, rbnode* n) {
+static void destroy_nodes(stk_rbtree* t, stk_rbnode* n) {
     if (n == t->nil) return;
     destroy_nodes(t, n->left);
     destroy_nodes(t, n->right);
     free(n);
 }
 
-static void inorder_rec(rbtree* t, rbnode* n, void (*visit)(void*)) {
+static void inorder_rec(stk_rbtree* t, stk_rbnode* n, void (*visit)(void*)) {
     if (n == t->nil) return;
     inorder_rec(t, n->left, visit);
     visit(n->data);
     inorder_rec(t, n->right, visit);
 }
 
-static void preorder_rec(rbtree* t, rbnode* n, void (*visit)(void*)) {
+static void preorder_rec(stk_rbtree* t, stk_rbnode* n, void (*visit)(void*)) {
     if (n == t->nil) return;
     visit(n->data);
     preorder_rec(t, n->left, visit);
     preorder_rec(t, n->right, visit);
 }
 
-static void postorder_rec(rbtree* t, rbnode* n, void (*visit)(void*)) {
+static void postorder_rec(stk_rbtree* t, stk_rbnode* n, void (*visit)(void*)) {
     if (n == t->nil) return;
     postorder_rec(t, n->left, visit);
     postorder_rec(t, n->right, visit);
     visit(n->data);
 }
 
-void rbtree_init(rbtree* t, int (*compare)(const void* a, const void* b)) {
-    t->nil = (rbnode*)malloc(sizeof(rbnode));
-    t->nil->color = RB_BLACK;
+void stk_rbtree_init(stk_rbtree* t, int (*compare)(const void* a, const void* b)) {
+    t->nil = (stk_rbnode*)malloc(sizeof(stk_rbnode));
+    t->nil->color = STK_RB_BLACK;
     t->nil->left = t->nil->right = t->nil->parent = t->nil;
     t->root = t->nil;
     t->size = 0;
     t->compare = compare;
 }
 
-void rbtree_free(rbtree* t) {
+void stk_rbtree_free(stk_rbtree* t) {
     destroy_nodes(t, t->root);
     free(t->nil);
     t->root = NULL;
@@ -195,10 +202,10 @@ void rbtree_free(rbtree* t) {
     t->compare = NULL;
 }
 
-void rbtree_insert(rbtree* t, void* val) {
-    rbnode* z = node_new(val, t->nil);
-    rbnode* y = t->nil;
-    rbnode* x = t->root;
+void stk_rbtree_insert(stk_rbtree* t, void* val) {
+    stk_rbnode* z = node_new(val, t->nil);
+    stk_rbnode* y = t->nil;
+    stk_rbnode* x = t->root;
 
     while (x != t->nil) {
         y = x;
@@ -215,8 +222,8 @@ void rbtree_insert(rbtree* t, void* val) {
     t->size++;
 }
 
-void rbtree_remove(rbtree* t, void* val) {
-    rbnode* z = t->root;
+void stk_rbtree_remove(stk_rbtree* t, void* val) {
+    stk_rbnode* z = t->root;
     while (z != t->nil) {
         int cmp = t->compare(val, z->data);
         if (cmp < 0) z = z->left;
@@ -225,8 +232,8 @@ void rbtree_remove(rbtree* t, void* val) {
     }
     if (z == t->nil) return;
 
-    rbnode* y = z;
-    rbnode* x = NULL;
+    stk_rbnode* y = z;
+    stk_rbnode* x = NULL;
     int y_orig_color = y->color;
 
     if (z->left == t->nil) {
@@ -252,13 +259,13 @@ void rbtree_remove(rbtree* t, void* val) {
         y->color = z->color;
     }
 
-    if (y_orig_color == RB_BLACK) delete_fixup(t, x);
+    if (y_orig_color == STK_RB_BLACK) delete_fixup(t, x);
     free(z);
     t->size--;
 }
 
-void* rbtree_find(rbtree* t, void* val) {
-    rbnode* n = t->root;
+void* stk_rbtree_find(stk_rbtree* t, void* val) {
+    stk_rbnode* n = t->root;
     while (n != t->nil) {
         int cmp = t->compare(val, n->data);
         if (cmp < 0) n = n->left;
@@ -268,8 +275,8 @@ void* rbtree_find(rbtree* t, void* val) {
     return NULL;
 }
 
-bool rbtree_has(rbtree* t, void* val) {
-    rbnode* n = t->root;
+bool stk_rbtree_has(stk_rbtree* t, void* val) {
+    stk_rbnode* n = t->root;
     while (n != t->nil) {
         int cmp = t->compare(val, n->data);
         if (cmp < 0) n = n->left;
@@ -279,37 +286,37 @@ bool rbtree_has(rbtree* t, void* val) {
     return false;
 }
 
-bool rbtree_empty(rbtree* t) {
+bool stk_rbtree_empty(stk_rbtree* t) {
     return t->root == t->nil;
 }
 
-size_t rbtree_size(rbtree* t) {
+size_t stk_rbtree_size(stk_rbtree* t) {
     return t->size;
 }
 
-void rbtree_inorder(rbtree* t, void (*visit)(void*)) {
+void stk_rbtree_inorder(stk_rbtree* t, void (*visit)(void*)) {
     inorder_rec(t, t->root, visit);
 }
 
-void rbtree_preorder(rbtree* t, void (*visit)(void*)) {
+void stk_rbtree_preorder(stk_rbtree* t, void (*visit)(void*)) {
     preorder_rec(t, t->root, visit);
 }
 
-void rbtree_postorder(rbtree* t, void (*visit)(void*)) {
+void stk_rbtree_postorder(stk_rbtree* t, void (*visit)(void*)) {
     postorder_rec(t, t->root, visit);
 }
 
-void* rbtree_min(rbtree* t) {
+void* stk_rbtree_min(stk_rbtree* t) {
     if (t->root == t->nil) return NULL;
     return minimum(t, t->root)->data;
 }
 
-void* rbtree_max(rbtree* t) {
+void* stk_rbtree_max(stk_rbtree* t) {
     if (t->root == t->nil) return NULL;
     return maximum(t, t->root)->data;
 }
 
-void rbtree_clear(rbtree* t) {
+void stk_rbtree_clear(stk_rbtree* t) {
     destroy_nodes(t, t->root);
     t->root = t->nil;
     t->size = 0;

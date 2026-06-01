@@ -1,9 +1,8 @@
-#include "list.h"
-#include <stdlib.h>
-#include <string.h>
+#include "stk/core/list.h"
 
-static list_node *create_node(void *val) {
-    list_node *node = malloc(sizeof(list_node));
+
+static stk_list_node *create_node(void *val) {
+    stk_list_node *node = malloc(sizeof(stk_list_node));
     if (!node) return NULL;
     node->data = val;
     node->prev = NULL;
@@ -11,17 +10,17 @@ static list_node *create_node(void *val) {
     return node;
 }
 
-void list_init(list *l) {
+void stk_list_init(stk_list *l) {
     if (!l) return;
     l->head = l->tail = NULL;
     l->size = 0;
 }
 
-void list_free(list *l) {
+void stk_list_free(stk_list *l) {
     if (!l) return;
-    list_node *cur = l->head;
+    stk_list_node *cur = l->head;
     while (cur) {
-        list_node *next = cur->next;
+        stk_list_node *next = cur->next;
         free(cur);
         cur = next;
     }
@@ -29,9 +28,9 @@ void list_free(list *l) {
     l->size = 0;
 }
 
-void list_push_front(list *l, void *val) {
+void stk_list_push_front(stk_list *l, void *val) {
     if (!l) return;
-    list_node *node = create_node(val);
+    stk_list_node *node = create_node(val);
     if (!node) return;
     
     if (!l->head) {
@@ -44,9 +43,9 @@ void list_push_front(list *l, void *val) {
     l->size++;
 }
 
-void list_push_back(list *l, void *val) {
+void stk_list_push_back(stk_list *l, void *val) {
     if (!l) return;
-    list_node *node = create_node(val);
+    stk_list_node *node = create_node(val);
     if (!node) return;
     
     if (!l->tail) {
@@ -59,10 +58,10 @@ void list_push_back(list *l, void *val) {
     l->size++;
 }
 
-void list_pop_front(list *l) {
+void stk_list_pop_front(stk_list *l) {
     if (!l || !l->head) return;
     
-    list_node *old_head = l->head;
+    stk_list_node *old_head = l->head;
     l->head = l->head->next;
     
     if (l->head) {
@@ -75,10 +74,10 @@ void list_pop_front(list *l) {
     l->size--;
 }
 
-void list_pop_back(list *l) {
+void stk_list_pop_back(stk_list *l) {
     if (!l || !l->tail) return;
     
-    list_node *old_tail = l->tail;
+    stk_list_node *old_tail = l->tail;
     l->tail = l->tail->prev;
     
     if (l->tail) {
@@ -91,18 +90,18 @@ void list_pop_back(list *l) {
     l->size--;
 }
 
-void *list_front(list *l) {
+void *stk_list_front(stk_list *l) {
     return (l && l->head) ? l->head->data : NULL;
 }
 
-void *list_back(list *l) {
+void *stk_list_back(stk_list *l) {
     return (l && l->tail) ? l->tail->data : NULL;
 }
 
-static list_node *node_at(list *l, size_t idx) {
+static stk_list_node *node_at(stk_list *l, size_t idx) {
     if (!l || idx >= l->size) return NULL;
     
-    list_node *node;
+    stk_list_node *node;
     if (idx < l->size / 2) {
         node = l->head;
         for (size_t i = 0; i < idx; i++)
@@ -115,31 +114,31 @@ static list_node *node_at(list *l, size_t idx) {
     return node;
 }
 
-void *list_get(list *l, size_t idx) {
-    list_node *node = node_at(l, idx);
+void *stk_list_get(stk_list *l, size_t idx) {
+    stk_list_node *node = node_at(l, idx);
     return node ? node->data : NULL;
 }
 
-void list_set(list *l, size_t idx, void *val) {
-    list_node *node = node_at(l, idx);
+void stk_list_set(stk_list *l, size_t idx, void *val) {
+    stk_list_node *node = node_at(l, idx);
     if (node) node->data = val;
 }
 
-void list_insert(list *l, size_t idx, void *val) {
+void stk_list_insert(stk_list *l, size_t idx, void *val) {
     if (!l || idx > l->size) return;
     
     if (idx == 0) {
-        list_push_front(l, val);
+        stk_list_push_front(l, val);
         return;
     }
     if (idx == l->size) {
-        list_push_back(l, val);
+        stk_list_push_back(l, val);
         return;
     }
     
-    list_node *right = node_at(l, idx);
-    list_node *left = right->prev;
-    list_node *node = create_node(val);
+    stk_list_node *right = node_at(l, idx);
+    stk_list_node *left = right->prev;
+    stk_list_node *node = create_node(val);
     if (!node) return;
     
     node->prev = left;
@@ -149,19 +148,19 @@ void list_insert(list *l, size_t idx, void *val) {
     l->size++;
 }
 
-void list_erase(list *l, size_t idx) {
+void stk_list_erase(stk_list *l, size_t idx) {
     if (!l || idx >= l->size) return;
     
     if (idx == 0) {
-        list_pop_front(l);
+        stk_list_pop_front(l);
         return;
     }
     if (idx == l->size - 1) {
-        list_pop_back(l);
+        stk_list_pop_back(l);
         return;
     }
     
-    list_node *target = node_at(l, idx);
+    stk_list_node *target = node_at(l, idx);
     if (!target) return;
     
     target->prev->next = target->next;
@@ -170,17 +169,15 @@ void list_erase(list *l, size_t idx) {
     l->size--;
 }
 
-size_t list_len(list *l) {
+size_t stk_list_len(stk_list *l) {
     return l ? l->size : 0;
 }
 
-bool list_empty(list *l) {
+bool stk_list_empty(stk_list *l) {
     return l ? l->size == 0 : true;
 }
 
-void list_clear(list *l) {
+void stk_list_clear(stk_list *l) {
     if (!l) return;
-    list_free(l);
+    stk_list_free(l);
 }
-
-LIST_IMPLEMENT_STRUCT(str,str,str_cmp)

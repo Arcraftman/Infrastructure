@@ -42,7 +42,7 @@ endif()
 
 if(INFRA_STK_ENABLE_UTILS)
     set(UTIL_SOURCES
-        ${INFRA_MODULE_STK_SRC_DIR}/utils/util.c
+        ${INFRA_MODULE_STK_SRC_DIR}/utils/other.c
         ${INFRA_MODULE_STK_SRC_DIR}/utils/logger.c
     )
     infra_register_component(stk utils SOURCES ${UTIL_SOURCES}

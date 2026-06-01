@@ -1,8 +1,14 @@
-#include "str.h"
+#include "stk/core/str.h"
 #include <string.h>
 #include <stdlib.h>
 
-void str_init(str *s)
+#define STK_STRING_DEFAULT_CAPACITY 16
+#define STK_STRING_GROW_FACTOR 2
+
+#define STK_STRING_COMPARE_CASE_SENSITIVE 1
+#define STK_STRING_COMPARE_CASE_INSENSITIVE 0
+
+void stk_str_init(stk_str *s)
 {
     if (!s)
         return;
@@ -10,7 +16,7 @@ void str_init(str *s)
     s->len = 0;
 }
 
-void str_init_from(str *s, const char *cstr)
+void stk_str_init_from(stk_str *s, const char *cstr)
 {
     if (!s)
         return;
@@ -34,7 +40,7 @@ void str_init_from(str *s, const char *cstr)
     }
 }
 
-void str_free(str *s)
+void stk_str_free(stk_str *s)
 {
     if (!s)
         return;
@@ -46,22 +52,22 @@ void str_free(str *s)
     s->len = 0;
 }
 
-const char *str_cstr(const str *s)
+const char *stk_str_cstr(const stk_str *s)
 {
     return s && s->data ? s->data : "";
 }
 
-size_t str_len(const str *s)
+size_t stk_str_len(const stk_str *s)
 {
     return s ? s->len : 0;
 }
 
-bool str_empty(const str *s)
+bool stk_str_empty(const stk_str *s)
 {
     return s ? s->len == 0 : true;
 }
 
-void str_clear(str *s)
+void stk_str_clear(stk_str *s)
 {
     if (!s)
         return;
@@ -72,7 +78,7 @@ void str_clear(str *s)
     s->len = 0;
 }
 
-void str_push(str *s, char ch)
+void stk_str_push(stk_str *s, char ch)
 {
     if (!s)
         return;
@@ -86,7 +92,7 @@ void str_push(str *s, char ch)
     s->data[s->len] = '\0';
 }
 
-void str_pop(str *s)
+void stk_str_pop(stk_str *s)
 {
     if (!s || s->len == 0)
         return;
@@ -101,7 +107,7 @@ void str_pop(str *s)
     }
 }
 
-void str_append(str *s, const char *cstr)
+void stk_str_append(stk_str *s, const char *cstr)
 {
     if (!s || !cstr)
         return;
@@ -119,19 +125,19 @@ void str_append(str *s, const char *cstr)
     s->len += add_len;
 }
 
-void str_append_str(str *s, const str *other)
+void stk_str_append_str(stk_str *s, const stk_str *other)
 {
     if (!s || !other)
         return;
-    str_append(s, other->data);
+    stk_str_append(s, other->data);
 }
 
-void str_assign(str *s, const char *cstr)
+void stk_str_assign(stk_str *s, const char *cstr)
 {
     if (!s)
         return;
 
-    str_clear(s);
+    stk_str_clear(s);
     if (!cstr || cstr[0] == '\0')
         return;
 
@@ -145,14 +151,14 @@ void str_assign(str *s, const char *cstr)
     s->len = new_len;
 }
 
-void str_assign_str(str *s, const str *other)
+void stk_str_assign_str(stk_str *s, const stk_str *other)
 {
     if (!s || !other)
         return;
-    str_assign(s, other->data);
+    stk_str_assign(s, other->data);
 }
 
-int str_find_char(const str *s, char ch, size_t start)
+int stk_str_find_char(const stk_str *s, char ch, size_t start)
 {
     if (!s || !s->data || start >= s->len)
         return -1;
@@ -165,7 +171,7 @@ int str_find_char(const str *s, char ch, size_t start)
     return -1;
 }
 
-int str_find(const str *s, const char *substr, size_t start)
+int stk_str_find(const stk_str *s, const char *substr, size_t start)
 {
     if (!s || !s->data || !substr || start >= s->len)
         return -1;
@@ -176,24 +182,27 @@ int str_find(const str *s, const char *substr, size_t start)
 
     return (int)(pos - s->data);
 }
-int str_cmp(const void *a, const void *b)
+int stk_str_cmp(const stk_str *s1, const stk_str *s2)
 {
-    if (!a && !b)
+    if (!s1 && !s2)
         return 0;
-    if (!a)
+    if (!s1)
         return -1;
-    if (!b)
+    if (!s2)
         return 1;
-
-    const str *s1 = (const str *)a;
-    const str *s2 = (const str *)b;
 
     const char *str1 = s1->data ? s1->data : "";
     const char *str2 = s2->data ? s2->data : "";
     return strcmp(str1, str2);
 }
 
-int str_cmp_cstr(const str *s, const char *cstr)
+int stk_str_cmp_qsort(const void *a, const void *b)
+{
+    const stk_str *sa = *(const stk_str *const *)a;
+    const stk_str *sb = *(const stk_str *const *)b;
+    return stk_str_cmp(sa, sb);
+}
+int stk_str_cmp_cstr(const stk_str *s, const char *cstr)
 {
     if (!s && !cstr)
         return 0;
@@ -206,7 +215,7 @@ int str_cmp_cstr(const str *s, const char *cstr)
     return strcmp(data, cstr);
 }
 
-void str_to_upper(str *s)
+void stk_str_to_upper(stk_str *s)
 {
     if (!s || !s->data)
         return;
@@ -217,7 +226,7 @@ void str_to_upper(str *s)
     }
 }
 
-void str_to_lower(str *s)
+void stk_str_to_lower(stk_str *s)
 {
     if (!s || !s->data)
         return;
@@ -228,12 +237,12 @@ void str_to_lower(str *s)
     }
 }
 
-str *str_sub(const str *s, size_t start, size_t end)
+stk_str *stk_str_sub(const stk_str *s, size_t start, size_t end)
 {
-    str *result = (str *)malloc(sizeof(str));
+    stk_str *result = (stk_str *)malloc(sizeof(stk_str));
     if (!result)
         return NULL;
-    str_init(result);
+    stk_str_init(result);
 
     if (!s || !s->data || start >= s->len || end <= start)
     {
@@ -258,7 +267,7 @@ str *str_sub(const str *s, size_t start, size_t end)
     return result;
 }
 
-void str_print(const str *s)
+void stk_str_print(const stk_str *s)
 {
     if (s && s->data)
     {
@@ -266,15 +275,15 @@ void str_print(const str *s)
     }
 }
 
-void str_println(const str *s)
+void stk_str_println(const stk_str *s)
 {
-    str_print(s);
+    stk_str_print(s);
     printf("\n");
 }
 
-void str_copy(str *dest, const str *src)
+void stk_str_copy(stk_str *dest, const stk_str *src)
 {
     if (!dest || !src)
         return;
-    str_init_from(dest, src->data);
+    stk_str_init_from(dest, src->data);
 }

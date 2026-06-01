@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-static bool ensure(buffer *b, size_t extra) {
+static bool ensure(stk_buffer *b, size_t extra) {
     size_t needed = b->len + extra + 1;
     if (needed <= b->capacity) return true;
     size_t new_cap = b->capacity ? b->capacity : 32;
@@ -16,55 +16,55 @@ static bool ensure(buffer *b, size_t extra) {
     return true;
 }
 
-void buffer_init(buffer *b) {
+void stk_buffer_init(stk_buffer *b) {
     b->data     = NULL;
     b->len      = 0;
     b->capacity = 0;
 }
 
-void buffer_init_with_capacity(buffer *b, size_t cap) {
+void stk_buffer_init_with_capacity(stk_buffer *b, size_t cap) {
     b->data     = (char *)malloc(cap);
     b->len      = 0;
     b->capacity = b->data ? cap : 0;
     if (b->data) b->data[0] = '\0';
 }
 
-void buffer_free(buffer *b) {
+void stk_buffer_free(stk_buffer *b) {
     free(b->data);
     b->data = NULL;
     b->len = b->capacity = 0;
 }
 
-void buffer_append(buffer *b, const void *src, size_t n) {
+void stk_buffer_append(stk_buffer *b, const void *src, size_t n) {
     if (!ensure(b, n)) return;
     memcpy(b->data + b->len, src, n);
     b->len += n;
     b->data[b->len] = '\0';
 }
 
-void buffer_append_cstr(buffer *b, const char *cstr) {
-    buffer_append(b, cstr, strlen(cstr));
+void stk_buffer_append_cstr(stk_buffer *b, const char *cstr) {
+    stk_buffer_append(b, cstr, strlen(cstr));
 }
 
-void buffer_append_char(buffer *b, char ch) {
+void stk_buffer_append_char(stk_buffer *b, char ch) {
     if (!ensure(b, 1)) return;
     b->data[b->len++] = ch;
     b->data[b->len] = '\0';
 }
 
-void buffer_append_int(buffer *b, int val) {
+void stk_buffer_append_int(stk_buffer *b, int val) {
     char tmp[32];
     int n = snprintf(tmp, sizeof(tmp), "%d", val);
-    buffer_append(b, tmp, (size_t)n);
+    stk_buffer_append(b, tmp, (size_t)n);
 }
 
-void buffer_append_uint(buffer *b, unsigned int val) {
+void stk_buffer_append_uint(stk_buffer *b, unsigned int val) {
     char tmp[32];
     int n = snprintf(tmp, sizeof(tmp), "%u", val);
-    buffer_append(b, tmp, (size_t)n);
+    stk_buffer_append(b, tmp, (size_t)n);
 }
 
-void buffer_append_hex(buffer *b, const void *data, size_t n) {
+void stk_buffer_append_hex(stk_buffer *b, const void *data, size_t n) {
     static const char hex[] = "0123456789abcdef";
     size_t needed = n * 2;
     if (!ensure(b, needed)) return;
@@ -76,14 +76,14 @@ void buffer_append_hex(buffer *b, const void *data, size_t n) {
     b->data[b->len] = '\0';
 }
 
-void buffer_printf(buffer *b, const char *fmt, ...) {
+void stk_buffer_printf(stk_buffer *b, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    buffer_vprintf(b, fmt, ap);
+    stk_buffer_vprintf(b, fmt, ap);
     va_end(ap);
 }
 
-void buffer_vprintf(buffer *b, const char *fmt, va_list ap) {
+void stk_buffer_vprintf(stk_buffer *b, const char *fmt, va_list ap) {
     va_list copy;
     va_copy(copy, ap);
     int needed = vsnprintf(NULL, 0, fmt, ap);
@@ -95,7 +95,7 @@ void buffer_vprintf(buffer *b, const char *fmt, va_list ap) {
     va_end(copy);
 }
 
-void buffer_insert(buffer *b, size_t pos, const void *src, size_t n) {
+void stk_buffer_insert(stk_buffer *b, size_t pos, const void *src, size_t n) {
     if (pos > b->len) pos = b->len;
     if (!ensure(b, n)) return;
     memmove(b->data + pos + n, b->data + pos, b->len - pos);
@@ -104,7 +104,7 @@ void buffer_insert(buffer *b, size_t pos, const void *src, size_t n) {
     b->data[b->len] = '\0';
 }
 
-void buffer_overwrite(buffer *b, size_t pos, const void *src, size_t n) {
+void stk_buffer_overwrite(stk_buffer *b, size_t pos, const void *src, size_t n) {
     if (pos > b->len) pos = b->len;
     size_t end = pos + n;
     if (end > b->len) {
@@ -115,12 +115,12 @@ void buffer_overwrite(buffer *b, size_t pos, const void *src, size_t n) {
     b->data[b->len] = '\0';
 }
 
-void buffer_clear(buffer *b) {
+void stk_buffer_clear(stk_buffer *b) {
     b->len = 0;
     if (b->data) b->data[0] = '\0';
 }
 
-void buffer_reserve(buffer *b, size_t cap) {
+void stk_buffer_reserve(stk_buffer *b, size_t cap) {
     if (cap <= b->capacity) return;
     char *p = (char *)realloc(b->data, cap);
     if (p) {
@@ -129,7 +129,7 @@ void buffer_reserve(buffer *b, size_t cap) {
     }
 }
 
-void buffer_shrink(buffer *b, size_t max_cap) {
+void stk_buffer_shrink(stk_buffer *b, size_t max_cap) {
     (void)max_cap;
     /* Shrink to fit, but no smaller than 32 bytes */
     size_t new_cap = b->len + 1;
@@ -142,7 +142,7 @@ void buffer_shrink(buffer *b, size_t max_cap) {
     }
 }
 
-void buffer_erase(buffer *b, size_t pos, size_t n) {
+void stk_buffer_erase(stk_buffer *b, size_t pos, size_t n) {
     if (pos >= b->len || n == 0) return;
     if (pos + n > b->len) n = b->len - pos;
     memmove(b->data + pos, b->data + pos + n, b->len - pos - n);
@@ -150,7 +150,7 @@ void buffer_erase(buffer *b, size_t pos, size_t n) {
     b->data[b->len] = '\0';
 }
 
-const char *buffer_data(const buffer *b) { return b->data ? b->data : ""; }
-size_t      buffer_len(const buffer *b)      { return b->len; }
-size_t      buffer_capacity(const buffer *b)  { return b->capacity; }
-bool        buffer_empty(const buffer *b)     { return b->len == 0; }
+const char *stk_buffer_data(const stk_buffer *b) { return b->data ? b->data : ""; }
+size_t      stk_buffer_len(const stk_buffer *b)      { return b->len; }
+size_t      stk_buffer_capacity(const stk_buffer *b)  { return b->capacity; }
+bool        stk_buffer_empty(const stk_buffer *b)     { return b->len == 0; }

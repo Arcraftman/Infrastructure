@@ -1,9 +1,7 @@
 #ifndef STK_DEF_H
 #define STK_DEF_H
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
+
 
 /* =========================================================================
  * Platform Detection
