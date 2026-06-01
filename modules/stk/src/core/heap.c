@@ -1,6 +1,6 @@
+#include "stk/def.h"
+#include "stk/core/preset.h"
 #include "stk/core/heap.h"
-#include <stdlib.h>
-#include <string.h>
 
 #define HEAP_GROW_FACTOR 2
 

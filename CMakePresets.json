@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
     "minor": 19,
@@ -7,43 +7,74 @@
   },
   "configurePresets": [
     {
-      "name": "default",
+      "name": "base",
       "hidden": true,
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
         "INFRA_BUILD_TESTS": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
-      "name": "debug",
-      "inherits": "default",
-      "description": "Configure Debug (Ninja)"
+      "name": "base-debug",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     },
     {
-      "name": "release",
-      "inherits": "default",
-      "description": "Configure Release (Ninja)",
+      "name": "base-release",
+      "hidden": true,
+      "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "INFRA_ENABLE_CLANG_TIDY": "OFF"
+        "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "linux-debug-ninja",
+      "displayName": "Linux Debug (Ninja)",
+      "inherits": "base-debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-debug-ninja"
+    },
+    {
+      "name": "linux-release-ninja",
+      "displayName": "Linux Release (Ninja)",
+      "inherits": "base-release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-release-ninja"
+    },
+    {
+      "name": "linux-debug-make",
+      "displayName": "Linux Debug (Makefile)",
+      "inherits": "base-debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/linux-debug-make"
+    },
+    {
+      "name": "linux-release-make",
+      "displayName": "Linux Release (Makefile)",
+      "inherits": "base-release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/linux-release-make"
     }
   ],
   "buildPresets": [
     {
-      "name": "default",
-      "configurePreset": "default",
-      "description": "Build using configured preset",
-      "jobs": 4
-    }
-  ],
-  "testPresets": [
+      "name": "linux-debug-ninja",
+      "configurePreset": "linux-debug-ninja"
+    },
     {
-      "name": "default",
-      "configurePreset": "default"
+      "name": "linux-release-ninja",
+      "configurePreset": "linux-release-ninja"
+    },
+    {
+      "name": "linux-debug-make",
+      "configurePreset": "linux-debug-make"
+    },
+    {
+      "name": "linux-release-make",
+      "configurePreset": "linux-release-make"
     }
   ]
 }

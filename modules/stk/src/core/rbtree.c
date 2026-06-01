@@ -1,8 +1,8 @@
 // stk_rbtree.c
 
+#include "stk/def.h"
+#include "stk/core/preset.h"
 #include "stk/core/rbtree.h"
-#include <stdlib.h>
-#include <string.h>
 
 #define STK_RB_RED   0
 #define STK_RB_BLACK 1

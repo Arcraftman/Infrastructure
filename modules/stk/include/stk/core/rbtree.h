@@ -2,7 +2,6 @@
 
 #ifndef STK_CORE_RBTREE_H
 #define STK_CORE_RBTREE_H
-
 #include "stk/core/preset.h"
 #include "stk/core/internal/rbtree.h"
 

@@ -1,8 +1,7 @@
 #ifndef STK_CORE_LIST_H
 #define STK_CORE_LIST_H
-
 #include "stk/core/preset.h"
-#include "detail/list.h"
+#include "stk/core/internal/list.h"
 
 
 // Linked list node

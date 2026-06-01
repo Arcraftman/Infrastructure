@@ -1,7 +1,6 @@
 #ifndef STK_CORE_PRESET_H
 #define STK_CORE_PRESET_H
 
-#include "stk/def.h"
 
 #ifdef __cplusplus
 #include "cpp/rbtree.hpp"
@@ -19,22 +18,10 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#include "str.h"
-#include "arena.h"
-#include "bitset.h"
-#include "buffer.h"
-#include "hashmap.h"
-#include "heap.h"
-#include "list.h"
-#include "pool.h"
-#include "rbtree.h"
-#include "vector.h"
-
-
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif /* STK_CORE_PRESET_H */

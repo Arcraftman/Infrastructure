@@ -1,9 +1,6 @@
 #ifndef STK_UTILS_OTHER_H
 #define STK_UTILS_OTHER_H
 
-#include "stk/def.h"
-#include <stddef.h>
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

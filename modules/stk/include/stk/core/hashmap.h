@@ -1,6 +1,5 @@
 #ifndef STK_CORE_HASHMAP_H
 #define STK_CORE_HASHMAP_H
-
 #include "stk/core/preset.h"
 
 #ifdef __cplusplus

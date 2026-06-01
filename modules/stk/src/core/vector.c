@@ -1,7 +1,6 @@
+#include "stk/def.h"
+#include "stk/core/preset.h"
 #include "stk/core/vector.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #define STK_VECTOR_DEFAULT_CAPACITY 16
 #define STK_VECTOR_GROW_FACTOR 2

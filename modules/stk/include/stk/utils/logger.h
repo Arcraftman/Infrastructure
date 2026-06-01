@@ -1,15 +1,20 @@
 #ifndef STK_UTILS_LOGGER_H
 #define STK_UTILS_LOGGER_H
 
-#include "preset.h"
-
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+/* ============================================================
+ * Logging is only enabled in Debug builds.
+ * For Release builds, all logging macros become no-ops.
+ * ============================================================ */
+
+#if defined(STK_ENABLE_LOGGING) || defined(DEBUG) || defined(_DEBUG)
+    #define STK_LOGGING_ENABLED 1
+#else
+    #define STK_LOGGING_ENABLED 0
 #endif
 
 /* Thread-local storage buffer size */
@@ -18,7 +23,7 @@ extern "C" {
 #define STK_DEFAULT_FLUSH_INTERVAL 3
 #define STK_TIME_STRING_SIZE 64
 
-/* Color definitions (only for ANSI terminals) */
+/* Color definitions */
 #ifdef _WIN32
     #define STK_COLOR_RESET   ""
     #define STK_COLOR_TRACE   ""
@@ -50,60 +55,173 @@ typedef enum {
 
 /* Log output options */
 typedef enum {
-    STK_LOG_OUTPUT_CONSOLE = 0x01,  /* Output to console */
-    STK_LOG_OUTPUT_FILE    = 0x02,  /* Output to file */
-    STK_LOG_OUTPUT_BOTH    = 0x03   /* Output to both console and file */
+    STK_LOG_OUTPUT_CONSOLE = 0x01,
+    STK_LOG_OUTPUT_FILE    = 0x02,
+    STK_LOG_OUTPUT_BOTH    = 0x03
 } stk_log_output_t;
 
 /* Log configuration structure */
 typedef struct {
-    stk_log_level_t log_level;          /* Log level */
-    stk_log_output_t output_option;     /* Output options */
-    const char *log_file;               /* Log file path */
-    int enable_color;                   /* Enable color */
-    int enable_timestamp;               /* Enable timestamp */
-    int enable_fileline;                /* Enable filename and line number */
-    int enable_function;                /* Enable function name */
-    int enable_thread_id;               /* Enable thread ID */
-    int enable_ms;                      /* Enable milliseconds */
-    int buffer_size;                    /* Buffer size */
-    int flush_interval;                 /* Flush interval (seconds, 0 = immediate) */
-    int max_file_size;                  /* Max file size (MB) */
-    int max_file_count;                 /* Max file count */
+    stk_log_level_t log_level;
+    stk_log_output_t output_option;
+    const char *log_file;
+    int enable_color;
+    int enable_timestamp;
+    int enable_fileline;
+    int enable_function;
+    int enable_thread_id;
+    int enable_ms;
+    int buffer_size;
+    int flush_interval;
+    int max_file_size;
+    int max_file_count;
 } stk_log_config_t;
 
-/* API function declarations */
-STK_API int stk_log_init(stk_log_config_t *config);
-STK_API void stk_log_close(void);
-STK_API int stk_log_reload(stk_log_config_t *config);
-STK_API void stk_log_set_level(stk_log_level_t level);
+/* API function declarations - all return STK_STATUS */
+STK_API STK_STATUS stk_log_init(stk_log_config_t *config);
+STK_API STK_STATUS stk_log_close(void);
+STK_API STK_STATUS stk_log_reload(stk_log_config_t *config);
+STK_API STK_STATUS stk_log_set_level(stk_log_level_t level);
+STK_API STK_STATUS stk_log_flush(void);
+STK_API STK_STATUS stk_log_write(stk_log_level_t level, const char *filename,
+                                  int line, const char *func, const char *format, ...);
+STK_API int        stk_log_is_enabled(stk_log_level_t level);
 STK_API stk_log_level_t stk_log_get_level(void);
-STK_API void stk_log_flush(void);
-STK_API void stk_log_write(stk_log_level_t level, const char *filename,
-                           int line, const char *func, const char *format, ...);
-STK_API int stk_log_is_enabled(stk_log_level_t level);
 
 #ifdef __cplusplus
 }
 #endif
 
-/* Log macro definitions */
-#define STK_LOG_TRACE(format, ...) \
-    stk_log_write(STK_LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+/* ============================================================
+ * Log macros - conditionally compiled
+ * ============================================================ */
 
-#define STK_LOG_DEBUG(format, ...) \
-    stk_log_write(STK_LOG_LEVEL_DEBUG, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+#if STK_LOGGING_ENABLED
 
-#define STK_LOG_INFO(format, ...) \
-    stk_log_write(STK_LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+    #define STK_LOG_TRACE(format, ...) \
+        stk_log_write(STK_LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
 
-#define STK_LOG_WARN(format, ...) \
-    stk_log_write(STK_LOG_LEVEL_WARN, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+    #define STK_LOG_DEBUG(format, ...) \
+        stk_log_write(STK_LOG_LEVEL_DEBUG, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
 
-#define STK_LOG_ERROR(format, ...) \
-    stk_log_write(STK_LOG_LEVEL_ERROR, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+    #define STK_LOG_INFO(format, ...) \
+        stk_log_write(STK_LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
 
-#define STK_LOG_FATAL(format, ...) \
-    stk_log_write(STK_LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+    #define STK_LOG_WARN(format, ...) \
+        stk_log_write(STK_LOG_LEVEL_WARN, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+
+    #define STK_LOG_ERROR(format, ...) \
+        stk_log_write(STK_LOG_LEVEL_ERROR, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+
+    #define STK_LOG_FATAL(format, ...) \
+        stk_log_write(STK_LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
+
+    /* Assertion macro that logs before aborting */
+    #define STK_ASSERT(expr, format, ...) \
+        do { \
+            if (!(expr)) { \
+                stk_log_write(STK_LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, \
+                              "Assertion failed: " #expr ". " format, ##__VA_ARGS__); \
+                abort(); \
+            } \
+        } while(0)
+
+    /* Return error with logging */
+    #define STK_RETURN_IF_ERROR(expr, format, ...) \
+        do { \
+            STK_STATUS _stk_err = (expr); \
+            if (_stk_err != STK_OK) { \
+                STK_LOG_ERROR(format, ##__VA_ARGS__); \
+                return _stk_err; \
+            } \
+        } while(0)
+
+    /* Return error if condition fails */
+    #define STK_RETURN_IF(cond, err, format, ...) \
+        do { \
+            if (cond) { \
+                STK_LOG_ERROR(format, ##__VA_ARGS__); \
+                return (err); \
+            } \
+        } while(0)
+
+    /* Set error and goto cleanup */
+    #define STK_GOTO_IF_ERROR(expr, label, format, ...) \
+        do { \
+            STK_STATUS _stk_rc = (expr); \
+            if (_stk_rc != STK_OK) { \
+                STK_LOG_ERROR(format, ##__VA_ARGS__); \
+                goto label; \
+            } \
+        } while(0)
+
+    /* Check pointer and return error if NULL */
+    #define STK_CHECK_PTR(ptr, format, ...) \
+        STK_RETURN_IF(!(ptr), STK_EINVAL, format, ##__VA_ARGS__)
+
+    /* Check index range */
+    #define STK_CHECK_RANGE(idx, max, format, ...) \
+        STK_RETURN_IF((idx) >= (max), STK_ERANGE, format, ##__VA_ARGS__)
+
+    /* Log and return error directly */
+    #define STK_ERROR_RETURN(err, format, ...) \
+        do { \
+            STK_LOG_ERROR(format, ##__VA_ARGS__); \
+            return (err); \
+        } while(0)
+
+    /* Log and goto label */
+    #define STK_ERROR_GOTO(label, format, ...) \
+        do { \
+            STK_LOG_ERROR(format, ##__VA_ARGS__); \
+            goto label; \
+        } while(0)
+
+#else /* Release build - all macros become no-ops */
+
+    #define STK_LOG_TRACE(format, ...) ((void)0)
+    #define STK_LOG_DEBUG(format, ...) ((void)0)
+    #define STK_LOG_INFO(format, ...)  ((void)0)
+    #define STK_LOG_WARN(format, ...)  ((void)0)
+    #define STK_LOG_ERROR(format, ...) ((void)0)
+    #define STK_LOG_FATAL(format, ...) ((void)0)
+
+    #define STK_ASSERT(expr, format, ...) \
+        do { \
+            if (!(expr)) { \
+                abort(); \
+            } \
+        } while(0)
+
+    #define STK_RETURN_IF_ERROR(expr, format, ...) \
+        do { \
+            STK_STATUS _stk_err = (expr); \
+            if (_stk_err != STK_OK) return _stk_err; \
+        } while(0)
+
+    #define STK_RETURN_IF(cond, err, format, ...) \
+        do { \
+            if (cond) return (err); \
+        } while(0)
+
+    #define STK_GOTO_IF_ERROR(expr, label, format, ...) \
+        do { \
+            STK_STATUS _stk_rc = (expr); \
+            if (_stk_rc != STK_OK) goto label; \
+        } while(0)
+
+    #define STK_CHECK_PTR(ptr, format, ...) \
+        do { if (!(ptr)) return STK_EINVAL; } while(0)
+
+    #define STK_CHECK_RANGE(idx, max, format, ...) \
+        do { if ((idx) >= (max)) return STK_ERANGE; } while(0)
+
+    #define STK_ERROR_RETURN(err, format, ...) \
+        return (err)
+
+    #define STK_ERROR_GOTO(label, format, ...) \
+        goto label
+
+#endif /* STK_LOGGING_ENABLED */
 
 #endif /* STK_UTILS_LOGGER_H */

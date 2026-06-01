@@ -1,6 +1,6 @@
+#include "stk/def.h"
+#include "stk/core/preset.h"
 #include "stk/core/hashmap.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* Fowler-Noll-Vo 1a 64-bit hash */
 uint64_t stk_hashmap_str_hash(const void *key) {

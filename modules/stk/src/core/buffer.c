@@ -1,8 +1,6 @@
+#include "stk/def.h"
 #include "stk/core/buffer.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdio.h>
+
 
 static bool ensure(stk_buffer *b, size_t extra) {
     size_t needed = b->len + extra + 1;

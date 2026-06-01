@@ -1,7 +1,6 @@
 #ifndef STK_CORE_STR_H
 #define STK_CORE_STR_H
 
-
 #include "stk/core/preset.h"
 
 typedef struct {

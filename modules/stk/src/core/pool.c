@@ -1,6 +1,6 @@
+#include "stk/def.h"
+#include "stk/core/preset.h"
 #include "stk/core/pool.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* Align element_size up to sizeof(void*) */
 #define POOL_ALIGN(n) (((n) + sizeof(void*) - 1) & ~(sizeof(void*) - 1))

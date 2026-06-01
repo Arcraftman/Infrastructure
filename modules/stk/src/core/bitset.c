@@ -1,6 +1,5 @@
+#include "stk/def.h"
 #include "stk/core/bitset.h"
-#include <stdlib.h>
-#include <string.h>
 
 #define BITS_PER_WORD (sizeof(size_t) * 8)
 #define WORD_IDX(b)   ((b) / BITS_PER_WORD)

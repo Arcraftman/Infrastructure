@@ -1,6 +1,5 @@
 #ifndef STK_CORE_HEAP_H
 #define STK_CORE_HEAP_H
-
 #include "stk/core/preset.h"
 
 #ifdef __cplusplus

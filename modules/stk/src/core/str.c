@@ -1,6 +1,6 @@
+#include "stk/def.h"
+#include "stk/core/preset.h"
 #include "stk/core/str.h"
-#include <string.h>
-#include <stdlib.h>
 
 #define STK_STRING_DEFAULT_CAPACITY 16
 #define STK_STRING_GROW_FACTOR 2

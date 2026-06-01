@@ -1,10 +1,7 @@
+#include "stk/def.h"
+#include "stk/utils/preset.h"
 #include "stk/utils/other.h"
 
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h>
-#include <stdio.h>
 
 /* =========================================================================
  * String Utilities
