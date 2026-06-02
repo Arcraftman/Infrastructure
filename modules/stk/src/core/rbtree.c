@@ -1,18 +1,18 @@
-// stk_rbtree.c
-
 #include "stk/def.h"
+#include "stk/utils/status.h"
+#include "stk/utils/logger.h"
 #include "stk/core/preset.h"
 #include "stk/core/rbtree.h"
 
 #define STK_RB_RED   0
 #define STK_RB_BLACK 1
 
-#define STK_RB_DEFAULT_CAPACITY 16
-#define STK_RB_GROW_FACTOR 2
-
-
 static stk_rbnode* node_new(void* val, stk_rbnode* nil) {
     stk_rbnode* n = (stk_rbnode*)malloc(sizeof(stk_rbnode));
+    if (!n) {
+        STK_LOG_ERROR("RBTree node_new: malloc failed");
+        return NULL;
+    }
     n->data = val;
     n->color = STK_RB_RED;
     n->left = nil;
@@ -184,45 +184,77 @@ static void postorder_rec(stk_rbtree* t, stk_rbnode* n, void (*visit)(void*)) {
     visit(n->data);
 }
 
-void stk_rbtree_init(stk_rbtree* t, int (*compare)(const void* a, const void* b)) {
+STK_STATUS stk_rbtree_init(stk_rbtree* t, int (*compare)(const void* a, const void* b)) {
+    STK_RETURN_IF(!t, STK_EINVAL, "RBTree init: NULL tree pointer");
+    STK_RETURN_IF(!compare, STK_EINVAL, "RBTree init: NULL compare function");
+    
     t->nil = (stk_rbnode*)malloc(sizeof(stk_rbnode));
+    if (!t->nil) {
+        STK_LOG_ERROR("RBTree init: failed to allocate nil node");
+        return STK_ENOMEM;
+    }
     t->nil->color = STK_RB_BLACK;
     t->nil->left = t->nil->right = t->nil->parent = t->nil;
     t->root = t->nil;
     t->size = 0;
     t->compare = compare;
+    
+    STK_LOG_DEBUG("RBTree initialized");
+    return STK_OK;
 }
 
-void stk_rbtree_free(stk_rbtree* t) {
+STK_STATUS stk_rbtree_free(stk_rbtree* t) {
+    if (!t) {
+        STK_LOG_WARN("RBTree free: NULL tree pointer");
+        return STK_EINVAL;
+    }
+    
     destroy_nodes(t, t->root);
     free(t->nil);
     t->root = NULL;
     t->nil = NULL;
     t->size = 0;
     t->compare = NULL;
+    
+    STK_LOG_DEBUG("RBTree freed");
+    return STK_OK;
 }
 
-void stk_rbtree_insert(stk_rbtree* t, void* val) {
+STK_STATUS stk_rbtree_insert(stk_rbtree* t, void* val) {
+    STK_RETURN_IF(!t, STK_EINVAL, "RBTree insert: NULL tree pointer");
+    STK_RETURN_IF(!val, STK_EINVAL, "RBTree insert: NULL value");
+    
     stk_rbnode* z = node_new(val, t->nil);
+    if (!z) {
+        STK_LOG_ERROR("RBTree insert: failed to create new node");
+        return STK_ENOMEM;
+    }
+    
     stk_rbnode* y = t->nil;
     stk_rbnode* x = t->root;
-
+    
     while (x != t->nil) {
         y = x;
         if (t->compare(z->data, x->data) < 0) x = x->left;
         else x = x->right;
     }
-
+    
     z->parent = y;
     if (y == t->nil) t->root = z;
     else if (t->compare(z->data, y->data) < 0) y->left = z;
     else y->right = z;
-
+    
     insert_fixup(t, z);
     t->size++;
+    
+    STK_LOG_DEBUG("RBTree insert: size=%zu", t->size);
+    return STK_OK;
 }
 
-void stk_rbtree_remove(stk_rbtree* t, void* val) {
+STK_STATUS stk_rbtree_remove(stk_rbtree* t, void* val) {
+    STK_RETURN_IF(!t, STK_EINVAL, "RBTree remove: NULL tree pointer");
+    STK_RETURN_IF(!val, STK_EINVAL, "RBTree remove: NULL value");
+    
     stk_rbnode* z = t->root;
     while (z != t->nil) {
         int cmp = t->compare(val, z->data);
@@ -230,12 +262,15 @@ void stk_rbtree_remove(stk_rbtree* t, void* val) {
         else if (cmp > 0) z = z->right;
         else break;
     }
-    if (z == t->nil) return;
-
+    if (z == t->nil) {
+        STK_LOG_WARN("RBTree remove: value not found");
+        return STK_ENOTFOUND;
+    }
+    
     stk_rbnode* y = z;
     stk_rbnode* x = NULL;
     int y_orig_color = y->color;
-
+    
     if (z->left == t->nil) {
         x = z->right;
         transplant(t, z, z->right);
@@ -258,13 +293,21 @@ void stk_rbtree_remove(stk_rbtree* t, void* val) {
         y->left->parent = y;
         y->color = z->color;
     }
-
+    
     if (y_orig_color == STK_RB_BLACK) delete_fixup(t, x);
     free(z);
     t->size--;
+    
+    STK_LOG_DEBUG("RBTree remove: size=%zu", t->size);
+    return STK_OK;
 }
 
 void* stk_rbtree_find(stk_rbtree* t, void* val) {
+    if (!t || !val) {
+        if (t) STK_LOG_WARN("RBTree find: NULL %s", !t ? "tree" : "value");
+        return NULL;
+    }
+    
     stk_rbnode* n = t->root;
     while (n != t->nil) {
         int cmp = t->compare(val, n->data);
@@ -276,6 +319,8 @@ void* stk_rbtree_find(stk_rbtree* t, void* val) {
 }
 
 bool stk_rbtree_has(stk_rbtree* t, void* val) {
+    if (!t || !val) return false;
+    
     stk_rbnode* n = t->root;
     while (n != t->nil) {
         int cmp = t->compare(val, n->data);
@@ -287,37 +332,60 @@ bool stk_rbtree_has(stk_rbtree* t, void* val) {
 }
 
 bool stk_rbtree_empty(stk_rbtree* t) {
-    return t->root == t->nil;
+    return t ? t->root == t->nil : true;
 }
 
 size_t stk_rbtree_size(stk_rbtree* t) {
-    return t->size;
+    return t ? t->size : 0;
 }
 
-void stk_rbtree_inorder(stk_rbtree* t, void (*visit)(void*)) {
+STK_STATUS stk_rbtree_inorder(stk_rbtree* t, void (*visit)(void*)) {
+    STK_RETURN_IF(!t, STK_EINVAL, "RBTree inorder: NULL tree pointer");
+    STK_RETURN_IF(!visit, STK_EINVAL, "RBTree inorder: NULL visit function");
+    
     inorder_rec(t, t->root, visit);
+    return STK_OK;
 }
 
-void stk_rbtree_preorder(stk_rbtree* t, void (*visit)(void*)) {
+STK_STATUS stk_rbtree_preorder(stk_rbtree* t, void (*visit)(void*)) {
+    STK_RETURN_IF(!t, STK_EINVAL, "RBTree preorder: NULL tree pointer");
+    STK_RETURN_IF(!visit, STK_EINVAL, "RBTree preorder: NULL visit function");
+    
     preorder_rec(t, t->root, visit);
+    return STK_OK;
 }
 
-void stk_rbtree_postorder(stk_rbtree* t, void (*visit)(void*)) {
+STK_STATUS stk_rbtree_postorder(stk_rbtree* t, void (*visit)(void*)) {
+    STK_RETURN_IF(!t, STK_EINVAL, "RBTree postorder: NULL tree pointer");
+    STK_RETURN_IF(!visit, STK_EINVAL, "RBTree postorder: NULL visit function");
+    
     postorder_rec(t, t->root, visit);
+    return STK_OK;
 }
 
 void* stk_rbtree_min(stk_rbtree* t) {
-    if (t->root == t->nil) return NULL;
+    if (!t || t->root == t->nil) {
+        if (t) STK_LOG_WARN("RBTree min: tree is empty");
+        return NULL;
+    }
     return minimum(t, t->root)->data;
 }
 
 void* stk_rbtree_max(stk_rbtree* t) {
-    if (t->root == t->nil) return NULL;
+    if (!t || t->root == t->nil) {
+        if (t) STK_LOG_WARN("RBTree max: tree is empty");
+        return NULL;
+    }
     return maximum(t, t->root)->data;
 }
 
-void stk_rbtree_clear(stk_rbtree* t) {
+STK_STATUS stk_rbtree_clear(stk_rbtree* t) {
+    STK_RETURN_IF(!t, STK_EINVAL, "RBTree clear: NULL tree pointer");
+    
     destroy_nodes(t, t->root);
     t->root = t->nil;
     t->size = 0;
+    
+    STK_LOG_DEBUG("RBTree cleared");
+    return STK_OK;
 }

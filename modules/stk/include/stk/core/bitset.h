@@ -1,7 +1,7 @@
 #ifndef STK_CORE_BITSET_H
 #define STK_CORE_BITSET_H
 
-#include "stk/core/preset.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,21 +32,21 @@ typedef struct {
 
 /* Lifetime ------------------------------------------------------------- */
 
-STK_API void   stk_bitset_init(stk_bitset *b, size_t nbits);
-STK_API void   stk_bitset_free(stk_bitset *b);
+STK_API STK_STATUS stk_bitset_init(stk_bitset *b, size_t nbits);
+STK_API STK_STATUS stk_bitset_free(stk_bitset *b);
 
 /* Single-bit operations ------------------------------------------------ */
 
-STK_API void   stk_bitset_set(stk_bitset *b, size_t idx);
-STK_API void   stk_bitset_clear(stk_bitset *b, size_t idx);
-STK_API void   stk_bitset_toggle(stk_bitset *b, size_t idx);
-STK_API bool   stk_bitset_get(const stk_bitset *b, size_t idx);
+STK_API STK_STATUS stk_bitset_set(stk_bitset *b, size_t idx);
+STK_API STK_STATUS stk_bitset_clear(stk_bitset *b, size_t idx);
+STK_API STK_STATUS stk_bitset_toggle(stk_bitset *b, size_t idx);
+STK_API bool       stk_bitset_get(const stk_bitset *b, size_t idx);
 
 /* Bulk operations ------------------------------------------------------ */
 
-STK_API void   stk_bitset_set_all(stk_bitset *b);
-STK_API void   stk_bitset_clear_all(stk_bitset *b);
-STK_API void   stk_bitset_negate(stk_bitset *b);
+STK_API STK_STATUS stk_bitset_set_all(stk_bitset *b);
+STK_API STK_STATUS stk_bitset_clear_all(stk_bitset *b);
+STK_API STK_STATUS stk_bitset_negate(stk_bitset *b);
 
 /* Queries -------------------------------------------------------------- */
 

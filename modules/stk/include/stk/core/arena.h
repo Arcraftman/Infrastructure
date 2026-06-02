@@ -1,8 +1,7 @@
 #ifndef STK_CORE_ARENA_H
 #define STK_CORE_ARENA_H
 
-#include "stk/core/preset.h"
-#include "stk/utils/status.h"
+
 
 #ifdef __cplusplus
 extern "C" {

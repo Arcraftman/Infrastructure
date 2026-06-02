@@ -7,4 +7,4 @@ Name: @PROJECT_NAME@
 Description: Infra - Infrastructure Library
 Version: @INFRA_VERSION_STRING@
 Cflags: -I${includedir}
-Libs: -L${libdir} -linfra_stk
+Libs: -L${libdir} -lstk

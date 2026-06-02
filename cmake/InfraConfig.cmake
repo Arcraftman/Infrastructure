@@ -207,6 +207,16 @@ option(INFRA_STK_CORE_ENABLE_HEAP
     "Enable stk core binary heap" ON)
 option(INFRA_STK_CORE_ENABLE_BITSET
     "Enable stk core bitset" ON)
+option(INFRA_STK_CORE_ENABLE_STACK
+     "Enable stk core stack" ON)
+option(INFRA_STK_CORE_ENABLE_QUEUE
+     "Enable stk core queue" ON)
+option(INFRA_STK_CORE_ENABLE_DEQUE
+     "Enable stk core deque" ON)
+option(INFRA_STK_CORE_ENABLE_RINGBUF
+     "Enable stk core ring buffer" ON)
+option(INFRA_STK_CORE_ENABLE_UF
+     "Enable stk core union-find" ON)
 
 option(INFRA_STK_ENABLE_UTILS
     "Enable stk utility functions (string, path, env, math, hash)" ON)

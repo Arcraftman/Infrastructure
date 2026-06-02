@@ -159,9 +159,9 @@ macro(infra_register_component MODULE_NAME COMPONENT_NAME)
     
 
     if(BUILD_SHARED_LIBS)
-        set(TARGET_NAME "infra_${MODULE_NAME}")
+        set(TARGET_NAME "${MODULE_NAME}")
     else()
-        set(TARGET_NAME "infra_${MODULE_NAME}")
+        set(TARGET_NAME "${MODULE_NAME}")
     endif()
     
     # 如果目标还不存在，创建它
@@ -225,7 +225,7 @@ macro(infra_finalize_module MODULE_NAME)
     string(TOUPPER ${MODULE_NAME} _MODULE)
     
     # 共享 OBJECT 库的目标名称
-    set(OBJECTS_TARGET "infra_${MODULE_NAME}")
+    set(OBJECTS_TARGET "${MODULE_NAME}")
     
     # 如果目标已存在，直接返回（避免重复创建）
     if(TARGET ${MODULE_NAME})

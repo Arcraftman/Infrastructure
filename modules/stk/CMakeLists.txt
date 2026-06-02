@@ -8,19 +8,26 @@
 #   - utils  : 工具组件（日志、其他实用功能）
 #
 # 可选功能（通过 CMake 选项控制）：
-#   INFRA_STK_ENABLE_CORE           - 启用核心组件
-#   INFRA_STK_ENABLE_UTILS          - 启用工具组件
-#   INFRA_STK_CORE_ENABLE_VECTOR    - 启用动态数组
-#   INFRA_STK_CORE_ENABLE_LIST      - 启用链表
-#   INFRA_STK_CORE_ENABLE_RBTREE    - 启用红黑树
-#   INFRA_STK_CORE_ENABLE_STRING    - 启用字符串
-#   INFRA_STK_CORE_ENABLE_ARENA     - 启用竞技场分配器
-#   INFRA_STK_CORE_ENABLE_BUFFER    - 启用缓冲区
-#   INFRA_STK_CORE_ENABLE_HASHMAP   - 启用哈希映射
-#   INFRA_STK_CORE_ENABLE_POOL      - 启用对象池
-#   INFRA_STK_CORE_ENABLE_HEAP      - 启用堆
-#   INFRA_STK_CORE_ENABLE_BITSET    - 启用位集
-#   INFRA_BUILD_TESTS               - 构建测试
+#   INFRA_STK_ENABLE_CORE                - 启用核心组件
+#   INFRA_STK_ENABLE_UTILS               - 启用工具组件
+#   INFRA_STK_CORE_ENABLE_VECTOR         - 启用动态数组
+#   INFRA_STK_CORE_ENABLE_LIST           - 启用双向链表
+#   INFRA_STK_CORE_ENABLE_SLIST          - 启用单向链表
+#   INFRA_STK_CORE_ENABLE_RBTREE         - 启用红黑树
+#   INFRA_STK_CORE_ENABLE_STRING         - 启用字符串
+#   INFRA_STK_CORE_ENABLE_ARENA          - 启用竞技场分配器
+#   INFRA_STK_CORE_ENABLE_BUFFER         - 启用缓冲区
+#   INFRA_STK_CORE_ENABLE_HASHMAP        - 启用哈希映射
+#   INFRA_STK_CORE_ENABLE_SET            - 启用集合
+#   INFRA_STK_CORE_ENABLE_POOL           - 启用对象池
+#   INFRA_STK_CORE_ENABLE_HEAP           - 启用堆
+#   INFRA_STK_CORE_ENABLE_BITSET         - 启用位集
+#   INFRA_STK_CORE_ENABLE_STACK          - 启用栈
+#   INFRA_STK_CORE_ENABLE_QUEUE          - 启用队列
+#   INFRA_STK_CORE_ENABLE_DEQUE          - 启用双端队列
+#   INFRA_STK_CORE_ENABLE_RINGBUF        - 启用环形缓冲区
+#   INFRA_STK_CORE_ENABLE_UF             - 启用并查集
+#   INFRA_BUILD_TESTS                    - 构建测试
 # ============================================================================
 
 # ----------------------------------------------------------------------------
@@ -50,6 +57,13 @@ if(INFRA_STK_ENABLE_CORE)
     if(INFRA_STK_CORE_ENABLE_LIST)
         list(APPEND CORE_SOURCES 
             ${INFRA_MODULE_STK_SRC_DIR}/core/list.c
+        )
+    endif()
+    
+    # 单向链表 - 轻量级链表实现
+    if(INFRA_STK_CORE_ENABLE_SLIST)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/slist.c
         )
     endif()
     
@@ -88,6 +102,13 @@ if(INFRA_STK_ENABLE_CORE)
         )
     endif()
     
+    # 集合 - 基于哈希表的集合实现
+    if(INFRA_STK_CORE_ENABLE_SET)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/set.c
+        )
+    endif()
+    
     # 对象池 - 固定大小的对象分配器
     if(INFRA_STK_CORE_ENABLE_POOL)
         list(APPEND CORE_SOURCES 
@@ -109,11 +130,46 @@ if(INFRA_STK_ENABLE_CORE)
         )
     endif()
     
+    # 栈 - LIFO 数据结构
+    if(INFRA_STK_CORE_ENABLE_STACK)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/stack.c
+        )
+    endif()
+    
+    # 队列 - FIFO 数据结构
+    if(INFRA_STK_CORE_ENABLE_QUEUE)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/queue.c
+        )
+    endif()
+    
+    # 双端队列 - 双端操作的数据结构
+    if(INFRA_STK_CORE_ENABLE_DEQUE)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/deque.c
+        )
+    endif()
+    
+    # 环形缓冲区 - 固定大小循环缓冲区
+    if(INFRA_STK_CORE_ENABLE_RINGBUF)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/ringbuf.c
+        )
+    endif()
+    
+    # 并查集 - 不相交集合数据结构
+    if(INFRA_STK_CORE_ENABLE_UF)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/uf.c
+        )
+    endif()
+    
     # 注册核心组件
     # 将编译生成的 .o 文件收集到模块对象列表中
     infra_register_component(stk core 
         SOURCES ${CORE_SOURCES}
-        PRIVATE_DIRS ${INFRA_MODULE_STK_SRC_DIR}/core
+        PRIVATE_DIRS ${INFRA_MODULE_STK_INC_DIR}
     )
     
 endif()
@@ -129,13 +185,13 @@ if(INFRA_STK_ENABLE_UTILS)
     set(UTIL_SOURCES
         ${INFRA_MODULE_STK_SRC_DIR}/utils/other.c      # 其他实用函数
         ${INFRA_MODULE_STK_SRC_DIR}/utils/logger.c     # 日志系统
-        ${INFRA_MODULE_STK_SRC_DIR}/utils/status.c     # 状态
+        ${INFRA_MODULE_STK_SRC_DIR}/utils/status.c     # 状态码
     )
     
     # 注册工具组件
     infra_register_component(stk utils 
         SOURCES ${UTIL_SOURCES}
-        PRIVATE_DIRS ${INFRA_MODULE_STK_SRC_DIR}/utils
+        PRIVATE_DIRS ${INFRA_MODULE_STK_INC_DIR}
     )
     
 endif()

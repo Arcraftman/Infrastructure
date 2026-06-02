@@ -1,6 +1,7 @@
 #ifndef STK_CORE_POOL_H
 #define STK_CORE_POOL_H
-#include "stk/core/preset.h"
+
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,13 +46,13 @@ typedef struct {
 
 /* Lifetime ------------------------------------------------------------- */
 
-STK_API void   stk_pool_init(stk_pool *p, size_t element_size, size_t slab_capacity);
-STK_API void   stk_pool_destroy(stk_pool *p);
+STK_API STK_STATUS stk_pool_init(stk_pool *p, size_t element_size, size_t slab_capacity);
+STK_API STK_STATUS stk_pool_destroy(stk_pool *p);
 
 /* Allocation / deallocation -------------------------------------------- */
 
 STK_API void  *stk_pool_alloc(stk_pool *p);
-STK_API void   stk_pool_free(stk_pool *p, void *element);
+STK_API STK_STATUS stk_pool_free(stk_pool *p, void *element);
 
 /* Introspection -------------------------------------------------------- */
 
