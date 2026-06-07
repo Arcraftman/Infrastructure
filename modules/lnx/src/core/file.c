@@ -1,5 +1,5 @@
 #include "lnx/def.h"
-#include "lnx/file.h"
+#include "lnx/core/file.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
