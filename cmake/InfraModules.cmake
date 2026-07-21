@@ -1,3 +1,5 @@
+# [file name]: InfraModules.cmake
+# [file content begin]
 # InfraModules.cmake - 模块注册与构建流程
 #
 # 定义模块生命周期：注册 → 初始化 → 注册组件 → 完成 → 添加模块
@@ -6,14 +8,16 @@
 # 宏说明：
 #   infra_register_module(NAME)       - 在全局列表中注册模块名称
 #   infra_init_module(NAME)           - 完整初始化：注册 + 目录设置 + 输出目录
-#   infra_register_component(...)     - 向模块添加一个对象库组件
-#   infra_finalize_module(NAME)       - 从组件组装模块库
+#   infra_register_component(...)     - 向模块添加源文件（直接添加到最终库）
+#   infra_finalize_module(NAME)       - 创建最终的模块库
 #   infra_add_module(NAME)            - 条件性地包含模块子目录
 #
 # 全局状态变量：
 #   INFRA_REGISTERED_MODULES          - 所有已注册模块名称的列表
-#   INFRA_MODULE_${NAME}_OBJECTS      - 为模块收集的对象文件
+#   INFRA_MODULE_${NAME}_SOURCES      - 为模块收集的源文件列表
 #   INFRA_MODULE_${NAME}_LINK_LIBS    - 模块的链接库
+#   INFRA_MODULE_${NAME}_INCLUDE_DIRS - 模块的头文件目录
+#   INFRA_MODULE_${NAME}_COMPILE_DEFS - 模块的编译宏定义
 #
 # 使用的选项：INFRA_ENABLE_{MODULE_UPPER}
 # 依赖：InfraUtils, InfraCompiler
@@ -82,7 +86,7 @@ endmacro()
 #   MODULE_NAME - 模块名称
 # 说明：
 #   - 避免重复注册相同的模块
-#   - 为模块初始化空的对象列表和链接库列表
+#   - 为模块初始化空的源文件列表、链接库列表、包含目录列表和编译定义列表
 #   - 将注册结果传递到父作用域（PARENT_SCOPE）
 # ============================================================================
 macro(infra_register_module MODULE_NAME)
@@ -93,10 +97,14 @@ macro(infra_register_module MODULE_NAME)
         list(APPEND INFRA_REGISTERED_MODULES ${MODULE_NAME})
         # 将更新后的列表传递到父作用域（供调用者使用）
         set(INFRA_REGISTERED_MODULES "${INFRA_REGISTERED_MODULES}" PARENT_SCOPE)
-        # 初始化该模块的对象文件列表（空）
-        set(INFRA_MODULE_${_MODULE}_OBJECTS "")
+        # 初始化该模块的源文件列表（空）
+        set(INFRA_MODULE_${_MODULE}_SOURCES "")
         # 初始化该模块的链接库列表（空）
         set(INFRA_MODULE_${_MODULE}_LINK_LIBS "")
+        # 初始化该模块的包含目录列表（空）
+        set(INFRA_MODULE_${_MODULE}_INCLUDE_DIRS "")
+        # 初始化该模块的编译定义列表（空）
+        set(INFRA_MODULE_${_MODULE}_COMPILE_DEFS "")
         # 输出信息日志
         infra_info("Registered module '${MODULE_NAME}'")
     endif()
@@ -121,20 +129,20 @@ macro(infra_init_module MODULE_NAME)
 endmacro()
 
 # ============================================================================
-# 组件注册（方案3：共享 OBJECT 库）
+# 组件注册
 # ============================================================================
-# 功能：将所有组件的源文件添加到同一个 OBJECT 库中
+# 功能：将组件的源文件添加到模块的源文件列表中
 # 参数：
 #   MODULE_NAME     - 所属模块名称
-#   COMPONENT_NAME  - 组件名称（仅用于日志，不用于目标命名）
+#   COMPONENT_NAME  - 组件名称（仅用于日志）
 # 关键字参数：
 #   SOURCES         - 源文件列表（必需）
 #   PRIVATE_DIRS    - 私有头文件目录列表
 #   LINK_LIBS       - 需要链接的库列表
 #   COMPILE_DEFS    - 编译宏定义列表
 # 说明：
-#   - 所有组件共享同一个 OBJECT 库目标：infra_${MODULE_NAME}_objs
-#   - 编译时只有一个 .dir 目录，例如 infra_stk_objs.dir/
+#   - 所有组件的源文件收集到 INFRA_MODULE_${MODULE}_SOURCES 列表中
+#   - 最终在 infra_finalize_module 中一次性创建库
 #   - 组件名称仅用于日志输出和调试
 # ============================================================================
 macro(infra_register_component MODULE_NAME COMPONENT_NAME)
@@ -154,52 +162,18 @@ macro(infra_register_component MODULE_NAME COMPONENT_NAME)
         return()
     endif()
     
-    # 记录组件的源文件（用于调试）
-    set(INFRA_MODULE_${_MODULE}_${COMPONENT_NAME}_SOURCES ${COMP_SOURCES})
+    # 将源文件添加到模块的源文件列表
+    list(APPEND INFRA_MODULE_${_MODULE}_SOURCES ${COMP_SOURCES})
     
-
-    if(BUILD_SHARED_LIBS)
-        set(TARGET_NAME "${MODULE_NAME}")
-    else()
-        set(TARGET_NAME "${MODULE_NAME}")
-    endif()
-    
-    # 如果目标还不存在，创建它
-    if(NOT TARGET ${TARGET_NAME})
-        add_library(${TARGET_NAME} OBJECT)
-        infra_info("Created object library: ${TARGET_NAME}")
-    endif()
-    
-    # 将源文件添加到共享 OBJECT 库
-    target_sources(${TARGET_NAME} PRIVATE ${COMP_SOURCES})
-    
-    # 设置头文件包含路径
-    target_include_directories(${TARGET_NAME} 
-        PRIVATE 
-            ${CMAKE_CURRENT_SOURCE_DIR}
-            ${INFRA_MODULE_${_MODULE}_INC_DIR}
-    )
-    
-    # 添加额外的私有头文件目录
+    # 添加私有头文件目录
     foreach(DIR ${COMP_PRIVATE_DIRS})
-        target_include_directories(${TARGET_NAME} PRIVATE ${DIR})
+        list(APPEND INFRA_MODULE_${_MODULE}_INCLUDE_DIRS ${DIR})
     endforeach()
     
     # 添加编译宏定义
     foreach(DEF ${COMP_COMPILE_DEFS})
-        target_compile_definitions(${TARGET_NAME} PRIVATE ${DEF})
+        list(APPEND INFRA_MODULE_${_MODULE}_COMPILE_DEFS ${DEF})
     endforeach()
-    
-    # 构建共享库时自动添加 DLL 导出宏
-    if(BUILD_SHARED_LIBS)
-        target_compile_definitions(${TARGET_NAME} PRIVATE
-            ${_MODULE}_DLL
-            ${_MODULE}_EXPORTING
-        )
-    endif()
-    
-    # 应用通用的编译器设置
-    infra_setup_target(${TARGET_NAME})
     
     # 收集链接库（去重）
     foreach(LIB ${COMP_LINK_LIBS})
@@ -208,74 +182,84 @@ macro(infra_register_component MODULE_NAME COMPONENT_NAME)
         endif()
     endforeach()
     
-    infra_success("Component '${COMPONENT_NAME}' added to ${TARGET_NAME}")
+    infra_success("Component '${COMPONENT_NAME}' added to module '${MODULE_NAME}'")
 endmacro()
+
 # ============================================================================
-# 模块完成（组装）
+# 模块完成（创建库）
 # ============================================================================
-# 功能：将所有组件对象文件组装成最终的模块库（共享库或静态库）
+# 功能：使用收集到的所有源文件创建最终的模块库（共享库或静态库）
 # 参数：
 #   MODULE_NAME - 模块名称
 # 说明：
-#   - 使用共享 OBJECT 库 infra_${MODULE_NAME}_objects 收集所有对象
+#   - 使用 INFRA_MODULE_${MODULE}_SOURCES 中收集的所有源文件
 #   - 根据 BUILD_SHARED_LIBS 决定创建共享库还是静态库
 #   - 创建 `infra::${MODULE_NAME}` 别名目标，方便使用
 # ============================================================================
 macro(infra_finalize_module MODULE_NAME)
     string(TOUPPER ${MODULE_NAME} _MODULE)
     
-    # 共享 OBJECT 库的目标名称
-    set(OBJECTS_TARGET "${MODULE_NAME}")
+    # 最终库的目标名称（与模块名相同）
+    set(LIBRARY_TARGET "${MODULE_NAME}")
     
-    # 如果目标已存在，直接返回（避免重复创建）
-    if(TARGET ${MODULE_NAME})
+    # 如果最终库目标已存在，直接返回
+    if(TARGET ${LIBRARY_TARGET})
         return()
     endif()
     
-    # 检查 OBJECT 库是否存在
-    if(NOT TARGET ${OBJECTS_TARGET})
-        infra_warn("Module '${MODULE_NAME}' has no objects target")
+    # 获取收集到的源文件
+    set(SOURCES ${INFRA_MODULE_${_MODULE}_SOURCES})
+    
+    # 检查是否有源文件
+    if(NOT SOURCES)
+        infra_warn("Module '${MODULE_NAME}' has no sources")
         return()
     endif()
-    
-    # 获取 OBJECT 库的对象文件
-    set(OBJECTS $<TARGET_OBJECTS:${OBJECTS_TARGET}>)
     
     # 根据 BUILD_SHARED_LIBS 决定创建共享库还是静态库
     if(BUILD_SHARED_LIBS)
-        add_library(${MODULE_NAME} SHARED ${OBJECTS})
+        add_library(${LIBRARY_TARGET} SHARED ${SOURCES})
     else()
-        add_library(${MODULE_NAME} STATIC ${OBJECTS})
+        add_library(${LIBRARY_TARGET} STATIC ${SOURCES})
     endif()
     
     # 创建别名目标，方便使用 `infra::module_name` 的形式链接
-    add_library(infra::${MODULE_NAME} ALIAS ${MODULE_NAME})
+    add_library(infra::${MODULE_NAME} ALIAS ${LIBRARY_TARGET})
     
-    # 设置公共头文件目录
-    # BUILD_INTERFACE: 构建时使用的路径（模块自己的 include 目录）
-    # INSTALL_INTERFACE: 安装后使用的路径（${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}）
-    target_include_directories(${MODULE_NAME}
+    # 设置头文件包含目录（PUBLIC，对外可见）
+    target_include_directories(${LIBRARY_TARGET}
         PUBLIC
             $<BUILD_INTERFACE:${INFRA_MODULE_${_MODULE}_INC_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
     )
     
-    # 添加私有头文件目录（仅编译时使用，不对外暴露）
-    if(INFRA_MODULE_${_MODULE}_INC_DIR)
-        target_include_directories(${MODULE_NAME}
-            PRIVATE ${INFRA_MODULE_${_MODULE}_INC_DIR}
+    # 添加额外的私有头文件目录（PRIVATE，仅编译时使用）
+    foreach(DIR ${INFRA_MODULE_${_MODULE}_INCLUDE_DIRS})
+        target_include_directories(${LIBRARY_TARGET} PRIVATE ${DIR})
+    endforeach()
+    
+    # 添加编译宏定义
+    foreach(DEF ${INFRA_MODULE_${_MODULE}_COMPILE_DEFS})
+        target_compile_definitions(${LIBRARY_TARGET} PRIVATE ${DEF})
+    endforeach()
+    
+    # 构建共享库时自动添加 DLL 导出宏
+    if(BUILD_SHARED_LIBS)
+        target_compile_definitions(${LIBRARY_TARGET} PRIVATE
+            ${_MODULE}_DLL
+            ${_MODULE}_EXPORTING
         )
     endif()
     
     # 链接收集到的依赖库
     if(INFRA_MODULE_${_MODULE}_LINK_LIBS)
-        target_link_libraries(${MODULE_NAME} PRIVATE ${INFRA_MODULE_${_MODULE}_LINK_LIBS})
+        target_link_libraries(${LIBRARY_TARGET} PRIVATE ${INFRA_MODULE_${_MODULE}_LINK_LIBS})
     endif()
     
     # 应用通用的编译器设置
-    infra_setup_target(${MODULE_NAME})
+    infra_setup_target(${LIBRARY_TARGET})
     
-    infra_success("Module '${MODULE_NAME}' created from ${OBJECTS_TARGET}")
+    infra_success("Module '${MODULE_NAME}' created")
 endmacro()
 
 # ============================================================================

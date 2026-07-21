@@ -1,43 +1,47 @@
-# InfraConfig.cmake - Build configuration and options
+# [file name]: InfraConfig.cmake
+# [file content begin]
+# InfraConfig.cmake - 构建配置和选项
 #
-# This module establishes the complete set of build options for the Infra project.
-# It handles platform detection, build type configuration, and enables/disables features.
+# 该模块为 Infra 项目建立完整的构建选项集。
+# 处理平台检测、构建类型配置，并启用/禁用功能。
 #
-# REQUIRES: InfraCommon.cmake (must be included first)
-# REQUIRES: CMake 3.19+
+# 要求: InfraCommon.cmake (必须先包含)
+# 要求: CMake 3.19+
 
+# 防止重复包含
 if(DEFINED INFRA_CONFIG_INCLUDED)
     return()
 endif()
 set(INFRA_CONFIG_INCLUDED TRUE)
 
+# 包含基础工具模块
 include(InfraCommon)
 
 # ============================================================================
-# CMake Version Requirements
+# CMake 版本要求
 # ============================================================================
 
 infra_require_cmake_version("3.19")
 
 # ============================================================================
-# Platform Detection
+# 平台检测
 # ============================================================================
 
 infra_get_platform_name(INFRA_PLATFORM)
 infra_info("Platform: ${INFRA_PLATFORM}")
 
 # ============================================================================
-# Build Type Configuration
+# 构建类型配置
 # ============================================================================
 
-# Set default build type if not specified
+# 如果未指定构建类型，设置默认值
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING
         "Build type (Debug|Release|RelWithDebInfo|MinSizeRel)")
     infra_info("Build type not specified, defaulting to 'Debug'")
 endif()
 
-# Validate build type
+# 验证构建类型是否有效
 set(VALID_BUILD_TYPES "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 list(FIND VALID_BUILD_TYPES "${CMAKE_BUILD_TYPE}" _BUILD_TYPE_VALID)
 if(_BUILD_TYPE_VALID EQUAL -1)
@@ -48,9 +52,10 @@ endif()
 infra_info("Build Type: ${CMAKE_BUILD_TYPE}")
 
 # ============================================================================
-# Library Type Configuration
+# 库类型配置
 # ============================================================================
 
+# 库类型选项：SHARED（共享库）或 STATIC（静态库）
 set(INFRA_LIBRARY_TYPE "SHARED" CACHE STRING "Library type (SHARED|STATIC)")
 set_property(CACHE INFRA_LIBRARY_TYPE PROPERTY STRINGS SHARED STATIC)
 
@@ -65,35 +70,35 @@ else()
 endif()
 
 # ============================================================================
-# Core Build Options
+# 核心构建选项
 # ============================================================================
 
-# Optimization
+# 优化
 option(INFRA_ENABLE_OPTIMIZATION
     "Enable compiler optimizations (-O2/-O3)" ON)
 
-# Debug Symbols
+# 调试符号
 option(INFRA_ENABLE_DEBUG_SYMBOLS
     "Enable debug symbols (-g for GCC/Clang, /Zi for MSVC)" ON)
 
-# Position Independent Code
+# 位置无关代码
 option(INFRA_POSITION_INDEPENDENT_CODE
     "Enable PIC (-fPIC for GCC/Clang)" ON)
 
-# Compiler Warnings
+# 编译器警告
 option(INFRA_ENABLE_WARNINGS
     "Enable compiler warnings (-Wall -Wextra for GCC/Clang, /W4 for MSVC)" ON)
 
-# Strict Mode - treat warnings as errors
+# 严格模式 - 将警告视为错误
 option(INFRA_ENABLE_STRICT_WARNINGS
     "Treat compiler warnings as errors (-Werror for GCC/Clang, /WX for MSVC)" OFF)
 
-# Address Sanitizer
+# 地址消毒剂 (AddressSanitizer)
 option(INFRA_ENABLE_ASAN
     "Enable AddressSanitizer for memory debugging" OFF)
 
 # ============================================================================
-# Testing Configuration
+# 测试配置
 # ============================================================================
 
 option(BUILD_TESTING
@@ -109,7 +114,7 @@ option(INFRA_BUILD_EXAMPLES
     "Build example programs" OFF)
 
 # ============================================================================
-# Installation Configuration
+# 安装配置
 # ============================================================================
 
 option(INFRA_INSTALL
@@ -128,7 +133,7 @@ option(INFRA_INSTALL_PKGCONFIG
     "Generate and install pkg-config .pc files" ON)
 
 # ============================================================================
-# Documentation Configuration
+# 文档配置
 # ============================================================================
 
 option(INFRA_BUILD_DOCS
@@ -138,7 +143,7 @@ option(INFRA_DOCS_WITH_LATEX
     "Generate LaTeX documentation (requires Doxygen+LaTeX)" OFF)
 
 # ============================================================================
-# Dependency Management
+# 依赖管理
 # ============================================================================
 
 option(INFRA_ENABLE_FETCHCONTENT
@@ -148,7 +153,7 @@ option(INFRA_ENABLE_PKGCONFIG
     "Enable pkg-config support for dependencies" ON)
 
 # ============================================================================
-# Version Information
+# 版本信息
 # ============================================================================
 
 set(INFRA_VERSION_STRING "${PROJECT_VERSION}" CACHE STRING "Project version string")
@@ -159,11 +164,11 @@ set(INFRA_VERSION_PATCH ${PROJECT_VERSION_PATCH} CACHE STRING "Patch version")
 infra_info("Version: ${INFRA_VERSION_STRING}")
 
 # ============================================================================
-# Module Management
+# 模块管理
 # ============================================================================
 
-# List of modules to build
-# Should be set by parent CMakeLists.txt before including this file
+# 要构建的模块列表
+# 应在包含此文件之前由父级 CMakeLists.txt 设置
 if(NOT DEFINED INFRA_MODULES)
     set(INFRA_MODULES "" CACHE STRING "Semicolon-separated list of modules to build")
     infra_warn("INFRA_MODULES not defined - no modules will be built")
@@ -173,18 +178,21 @@ if(INFRA_MODULES)
     infra_info("Configured modules: ${INFRA_MODULES}")
 endif()
 
-# Generate enable/disable option for each module
+# 为每个模块生成启用/禁用选项
 foreach(MODULE ${INFRA_MODULES})
     string(TOUPPER "${MODULE}" MODULE_UPPER)
     if(MODULE STREQUAL "stk")
+        # stk 模块默认启用
         option(INFRA_ENABLE_${MODULE_UPPER}
             "Enable ${MODULE} module" ON)
     else()
+        # 其他模块默认禁用
         option(INFRA_ENABLE_${MODULE_UPPER}
             "Enable ${MODULE} module" OFF)
     endif()
 endforeach()
 
+# stk 核心组件选项
 option(INFRA_STK_ENABLE_CORE
     "Enable stk core component" ON)
 option(INFRA_STK_CORE_ENABLE_VECTOR
@@ -222,7 +230,7 @@ option(INFRA_STK_ENABLE_UTILS
     "Enable stk utility functions (string, path, env, math, hash)" ON)
 
 # ============================================================================
-# Debug Options
+# 调试选项
 # ============================================================================
 
 option(INFRA_DEBUG
@@ -236,10 +244,10 @@ if(INFRA_VERBOSE_CMAKE)
 endif()
 
 # ============================================================================
-# Validation and Conflict Detection
+# 验证和冲突检测
 # ============================================================================
 
-# Check for conflicting options
+# 检查冲突的选项
 if(INFRA_ENABLE_ASAN AND INFRA_ENABLE_STRICT_WARNINGS)
     infra_warn("AddressSanitizer may produce warnings that conflict with -Werror")
 endif()
@@ -251,13 +259,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 if(BUILD_SHARED_LIBS AND INFRA_POSITION_INDEPENDENT_CODE)
-    # This is expected and good
+    # 这是预期的，也是好的
 elseif(NOT BUILD_SHARED_LIBS AND NOT INFRA_POSITION_INDEPENDENT_CODE)
     infra_info("Static library build without PIC")
 endif()
 
 # ============================================================================
-# Configuration Summary
+# 配置摘要
 # ============================================================================
 
 function(infra_print_build_config)
@@ -302,7 +310,7 @@ function(infra_print_build_config)
     message(STATUS "")
 endfunction()
 
-# Export function so it can be called from parent CMakeLists
+# 导出函数以便从父级 CMakeLists 调用
 function(infra_config_summary)
     infra_print_build_config()
 endfunction()

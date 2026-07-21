@@ -1,10 +1,16 @@
-prefix=@CMAKE_INSTALL_PREFIX@
-exec_prefix=${prefix}
-libdir=@CMAKE_INSTALL_LIBDIR@
-includedir=@CMAKE_INSTALL_INCLUDEDIR@/${PROJECT_NAME}
+# [file name]: Infra.pc.in
+# [file content begin]
+# Infra.pc.in - pkg-config 配置文件模板
+# 用于生成 .pc 文件，供 pkg-config 工具使用
+# 在安装时通过 CMake 的 configure_file 替换变量
 
-Name: @PROJECT_NAME@
-Description: Infra - Infrastructure Library
-Version: @INFRA_VERSION_STRING@
-Cflags: -I${includedir}
-Libs: -L${libdir} -lstk
+prefix=@CMAKE_INSTALL_PREFIX@                          # 安装前缀
+exec_prefix=${prefix}                                  # 可执行文件前缀
+libdir=@CMAKE_INSTALL_LIBDIR@                          # 库文件安装目录
+includedir=@CMAKE_INSTALL_INCLUDEDIR@/${PROJECT_NAME}  # 头文件安装目录
+
+Name: @PROJECT_NAME@                                   # 包名称
+Description: Infra - Infrastructure Library            # 包描述
+Version: @INFRA_VERSION_STRING@                        # 版本号
+Cflags: -I${includedir}                                # 编译选项（头文件路径）
+Libs: -L${libdir} -lstk                                # 链接选项（库路径和库名）

@@ -1,13 +1,6 @@
-# InfraPackaging.cmake - Install and packaging configuration
-#
-# Handles module installation, CMake package export, and config file deployment.
-#
-# MACROS:
-#   infra_setup_install() - Register install targets for all modules
-#
-# OPTIONS: INFRA_INSTALL, INFRA_INSTALL_HEADERS
-# DEPENDENCY: GNUInstallDirs
-# PLATFORM: Cross-platform
+# [file name]: InfraPackaging.cmake (修复版)
+# [file content begin]
+# InfraPackaging.cmake - 安装和打包配置
 
 if(DEFINED INFRA_PACKAGING_INCLUDED)
     return()
@@ -16,37 +9,55 @@ set(INFRA_PACKAGING_INCLUDED TRUE)
 
 include(GNUInstallDirs)
 
+# 设置安装
 macro(infra_setup_install)
+    # 默认启用安装
+    if(NOT DEFINED INFRA_INSTALL)
+        set(INFRA_INSTALL ON CACHE BOOL "Enable installation targets" FORCE)
+    endif()
+    
     if(NOT INFRA_INSTALL)
         infra_info("Installation disabled")
         return()
     endif()
     
-    # Install all registered modules
+    infra_info("Setting up installation...")
+    
+    # 安装所有已注册的模块
     foreach(MODULE ${INFRA_REGISTERED_MODULES})
         if(TARGET ${MODULE})
+            # 关键：这里必须有 install() 命令
             install(TARGETS ${MODULE}
                 EXPORT infra-targets
                 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
                 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
                 ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             )
-            infra_success("Installed module '${MODULE}'")
+            infra_success("Added install rule for module '${MODULE}'")
         endif()
     endforeach()
     
-    # Export CMake targets
+    # 导出 CMake 目标文件
     install(EXPORT infra-targets
         FILE infra-targets.cmake
         NAMESPACE infra::
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/infra
     )
     
-    # Install config file
-    if(EXISTS ${CMAKE_BINARY_DIR}/infra-config.cmake)
-        install(FILES
-            ${CMAKE_BINARY_DIR}/infra-config.cmake
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/infra
-        )
-    endif()
+    # 安装头文件（所有模块）
+    foreach(MODULE ${INFRA_REGISTERED_MODULES})
+        set(INC_DIR "${CMAKE_SOURCE_DIR}/modules/${MODULE}/include")
+        if(EXISTS ${INC_DIR})
+            install(DIRECTORY ${INC_DIR}/
+                DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+                FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+            )
+            infra_info("Added install rule for headers of module '${MODULE}'")
+        endif()
+    endforeach()
+    
+    # 重要：生成一个显式的消息，确保 CMake 知道有安装规则
+    message(STATUS "[Infra] Install rules have been generated")
+    
+    infra_success("Installation setup complete")
 endmacro()
