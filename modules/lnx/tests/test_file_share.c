@@ -1,17 +1,17 @@
 
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
-#include <errno.h>
+#include <sys/wait.h>
 #include <time.h>
+#include <unistd.h>
 
-#define TEST_FILE   "test_shared.txt"
-#define LOG_FILE    "test_append.log"
+#define TEST_FILE "test_shared.txt"
+#define LOG_FILE "test_append.log"
 #define BUFFER_SIZE 256
 
 // ==================== Helper functions ====================
@@ -78,15 +78,25 @@ void print_flags(int fd, const char* desc)
 
     printf("%s: file status flags = ", desc);
     switch (val & O_ACCMODE) {
-        case O_RDONLY: printf("O_RDONLY"); break;
-        case O_WRONLY: printf("O_WRONLY"); break;
-        case O_RDWR:   printf("O_RDWR"); break;
-        default:       printf("unknown");
+        case O_RDONLY:
+            printf("O_RDONLY");
+            break;
+        case O_WRONLY:
+            printf("O_WRONLY");
+            break;
+        case O_RDWR:
+            printf("O_RDWR");
+            break;
+        default:
+            printf("unknown");
     }
 
-    if (val & O_APPEND) printf(" | O_APPEND");
-    if (val & O_SYNC)   printf(" | O_SYNC");
-    if (val & O_NONBLOCK) printf(" | O_NONBLOCK");
+    if (val & O_APPEND)
+        printf(" | O_APPEND");
+    if (val & O_SYNC)
+        printf(" | O_SYNC");
+    if (val & O_NONBLOCK)
+        printf(" | O_NONBLOCK");
     printf("\n");
 }
 
@@ -125,7 +135,8 @@ void test_dup_share(void)
 
     show_file(TEST_FILE);
 
-    printf("\nConclusion: After dup, both descriptors share the same file table entry and offset\n");
+    printf(
+        "\nConclusion: After dup, both descriptors share the same file table entry and offset\n");
 
     close(fd1);
     close(fd2);
@@ -182,14 +193,16 @@ void test_fork_share(void)
         close(fd);
     }
 
-    printf("\nConclusion: After fork, parent and child share the same file table entry, offsets affect each other\n");
+    printf("\nConclusion: After fork, parent and child share the same file table entry, offsets "
+           "affect each other\n");
 }
 
 // ==================== Test 3: multiple open creates independent entries ====================
 
 void test_multiopen_independent(void)
 {
-    printf("\n========== Test 3: multiple open creates independent file table entries ==========\n");
+    printf(
+        "\n========== Test 3: multiple open creates independent file table entries ==========\n");
 
     reset_test_file(TEST_FILE, "111111\n");
 
@@ -202,7 +215,8 @@ void test_multiopen_independent(void)
     }
 
     printf("fd1 = %d, fd2 = %d\n", fd1, fd2);
-    printf("Both descriptors point to different file table entries but share the same inode (inode = %lu)\n\n",
+    printf("Both descriptors point to different file table entries but share the same inode (inode "
+           "= %lu)\n\n",
            get_inode(TEST_FILE));
 
     print_offset(fd1, "fd1 initial offset");
@@ -222,7 +236,8 @@ void test_multiopen_independent(void)
 
     show_file(TEST_FILE);
 
-    printf("\nConclusion: Each open creates an independent file table entry, offsets do not affect each other\n");
+    printf("\nConclusion: Each open creates an independent file table entry, offsets do not affect "
+           "each other\n");
 
     close(fd1);
     close(fd2);
@@ -257,16 +272,19 @@ void test_append_atomic(void)
         }
     }
 
-    while (wait(NULL) > 0);
+    while (wait(NULL) > 0)
+        ;
     close(fd);
 
-    printf("\n3 child processes each write 5 lines. O_APPEND guarantees atomicity, no overwrites\n");
+    printf(
+        "\n3 child processes each write 5 lines. O_APPEND guarantees atomicity, no overwrites\n");
 
     FILE* fp = fopen(LOG_FILE, "r");
     if (fp) {
         char line[BUFFER_SIZE];
         int count = 0;
-        while (fgets(line, sizeof(line), fp)) count++;
+        while (fgets(line, sizeof(line), fp))
+            count++;
         printf("Lines actually written: %d\n", count);
         fclose(fp);
     }
@@ -306,7 +324,8 @@ void test_race_condition(void)
         }
     }
 
-    while (wait(NULL) > 0);
+    while (wait(NULL) > 0)
+        ;
     close(fd);
 
     printf("\nlseek+write is not atomic, data may be overwritten\n");
@@ -315,7 +334,8 @@ void test_race_condition(void)
     if (fp) {
         char line[BUFFER_SIZE];
         int count = 0;
-        while (fgets(line, sizeof(line), fp)) count++;
+        while (fgets(line, sizeof(line), fp))
+            count++;
         printf("Lines actually written: %d (expected 15, may be less)\n", count);
         fclose(fp);
     }

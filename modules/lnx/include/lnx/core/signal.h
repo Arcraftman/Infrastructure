@@ -2,9 +2,10 @@
 #define LNX_SIGNAL_H
 
 #include "lnx/def.h"
+
 #include <signal.h>
-#include <sys/types.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,19 +19,19 @@ extern "C" {
 typedef struct lnx_signal_guard lnx_signal_guard_t;
 
 /** Allocate and initialize a signal guard. */
-LNX_API lnx_signal_guard_t *lnx_signal_guard_init(void);
+LNX_API lnx_signal_guard_t* lnx_signal_guard_init(void);
 
 /** Free a signal guard (does not restore handlers). */
-LNX_API void lnx_signal_guard_free(lnx_signal_guard_t *g);
+LNX_API void lnx_signal_guard_free(lnx_signal_guard_t* g);
 
 /** Capture the current disposition for a signal. */
-LNX_API int lnx_signal_guard_capture(lnx_signal_guard_t *g, int signum);
+LNX_API int lnx_signal_guard_capture(lnx_signal_guard_t* g, int signum);
 
 /** Restore the captured disposition for one signal. */
-LNX_API int lnx_signal_guard_restore(lnx_signal_guard_t *g, int signum);
+LNX_API int lnx_signal_guard_restore(lnx_signal_guard_t* g, int signum);
 
 /** Restore all captured dispositions. */
-LNX_API int lnx_signal_guard_restore_all(lnx_signal_guard_t *g);
+LNX_API int lnx_signal_guard_restore_all(lnx_signal_guard_t* g);
 
 /* =========================================================================
  * Signal Blocking (per-signal-number convenience)
@@ -68,7 +69,7 @@ LNX_API int lnx_signal_default(int signum);
  * Write the canonical signal name into a caller-supplied buffer.
  * Returns the number of characters written (excluding NUL).
  */
-LNX_API int lnx_signal_name(int signum, char *buf, size_t size);
+LNX_API int lnx_signal_name(int signum, char* buf, size_t size);
 
 #ifdef __cplusplus
 }

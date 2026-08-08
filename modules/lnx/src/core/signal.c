@@ -1,33 +1,31 @@
-#include "lnx/def.h"
-#include "lnx/signal.h"
+#include "lnx/core/signal.h"
 
-#include <signal.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include "lnx/def.h"
+
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct lnx_signal_guard {
     struct sigaction saved[NSIG];
-    size_t           n;
+    size_t n;
 };
 
-LNX_API lnx_signal_guard_t *
-lnx_signal_guard_init(void)
+LNX_API lnx_signal_guard_t* lnx_signal_guard_init(void)
 {
-    lnx_signal_guard_t *g = calloc(1, sizeof(*g));
+    lnx_signal_guard_t* g = calloc(1, sizeof(*g));
     return g;
 }
 
-LNX_API void
-lnx_signal_guard_free(lnx_signal_guard_t *g)
+LNX_API void lnx_signal_guard_free(lnx_signal_guard_t* g)
 {
     free(g);
 }
 
-LNX_API int
-lnx_signal_guard_capture(lnx_signal_guard_t *g, int signum)
+LNX_API int lnx_signal_guard_capture(lnx_signal_guard_t* g, int signum)
 {
     if (!g || signum < 1 || signum >= NSIG)
         return -1;
@@ -38,16 +36,14 @@ lnx_signal_guard_capture(lnx_signal_guard_t *g, int signum)
     return 0;
 }
 
-LNX_API int
-lnx_signal_guard_restore(lnx_signal_guard_t *g, int signum)
+LNX_API int lnx_signal_guard_restore(lnx_signal_guard_t* g, int signum)
 {
     if (!g || signum < 1 || signum >= NSIG)
         return -1;
     return sigaction(signum, &g->saved[signum], NULL);
 }
 
-LNX_API int
-lnx_signal_guard_restore_all(lnx_signal_guard_t *g)
+LNX_API int lnx_signal_guard_restore_all(lnx_signal_guard_t* g)
 {
     if (!g)
         return -1;
@@ -61,8 +57,7 @@ lnx_signal_guard_restore_all(lnx_signal_guard_t *g)
     return ret;
 }
 
-LNX_API int
-lnx_signal_block(int signum)
+LNX_API int lnx_signal_block(int signum)
 {
     sigset_t ss;
     sigemptyset(&ss);
@@ -70,8 +65,7 @@ lnx_signal_block(int signum)
     return pthread_sigmask(SIG_BLOCK, &ss, NULL);
 }
 
-LNX_API int
-lnx_signal_unblock(int signum)
+LNX_API int lnx_signal_unblock(int signum)
 {
     sigset_t ss;
     sigemptyset(&ss);
@@ -79,8 +73,7 @@ lnx_signal_unblock(int signum)
     return pthread_sigmask(SIG_UNBLOCK, &ss, NULL);
 }
 
-LNX_API int
-lnx_signal_ignore(int signum)
+LNX_API int lnx_signal_ignore(int signum)
 {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -89,8 +82,7 @@ lnx_signal_ignore(int signum)
     return sigaction(signum, &sa, NULL);
 }
 
-LNX_API int
-lnx_signal_default(int signum)
+LNX_API int lnx_signal_default(int signum)
 {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -99,31 +91,70 @@ lnx_signal_default(int signum)
     return sigaction(signum, &sa, NULL);
 }
 
-LNX_API int
-lnx_signal_name(int signum, char *buf, size_t size)
+LNX_API int lnx_signal_name(int signum, char* buf, size_t size)
 {
-    const char *name = NULL;
+    const char* name = NULL;
     switch (signum) {
-        case SIGHUP:    name = "SIGHUP";    break;
-        case SIGINT:    name = "SIGINT";    break;
-        case SIGQUIT:   name = "SIGQUIT";   break;
-        case SIGILL:    name = "SIGILL";    break;
-        case SIGABRT:   name = "SIGABRT";   break;
-        case SIGFPE:    name = "SIGFPE";    break;
-        case SIGKILL:   name = "SIGKILL";   break;
-        case SIGSEGV:   name = "SIGSEGV";   break;
-        case SIGPIPE:   name = "SIGPIPE";   break;
-        case SIGALRM:   name = "SIGALRM";   break;
-        case SIGTERM:   name = "SIGTERM";   break;
-        case SIGUSR1:   name = "SIGUSR1";   break;
-        case SIGUSR2:   name = "SIGUSR2";   break;
-        case SIGCHLD:   name = "SIGCHLD";   break;
-        case SIGCONT:   name = "SIGCONT";   break;
-        case SIGSTOP:   name = "SIGSTOP";   break;
-        case SIGTSTP:   name = "SIGTSTP";   break;
-        case SIGTTIN:   name = "SIGTTIN";   break;
-        case SIGTTOU:   name = "SIGTTOU";   break;
-        case SIGSYS:    name = "SIGSYS";    break;
+        case SIGHUP:
+            name = "SIGHUP";
+            break;
+        case SIGINT:
+            name = "SIGINT";
+            break;
+        case SIGQUIT:
+            name = "SIGQUIT";
+            break;
+        case SIGILL:
+            name = "SIGILL";
+            break;
+        case SIGABRT:
+            name = "SIGABRT";
+            break;
+        case SIGFPE:
+            name = "SIGFPE";
+            break;
+        case SIGKILL:
+            name = "SIGKILL";
+            break;
+        case SIGSEGV:
+            name = "SIGSEGV";
+            break;
+        case SIGPIPE:
+            name = "SIGPIPE";
+            break;
+        case SIGALRM:
+            name = "SIGALRM";
+            break;
+        case SIGTERM:
+            name = "SIGTERM";
+            break;
+        case SIGUSR1:
+            name = "SIGUSR1";
+            break;
+        case SIGUSR2:
+            name = "SIGUSR2";
+            break;
+        case SIGCHLD:
+            name = "SIGCHLD";
+            break;
+        case SIGCONT:
+            name = "SIGCONT";
+            break;
+        case SIGSTOP:
+            name = "SIGSTOP";
+            break;
+        case SIGTSTP:
+            name = "SIGTSTP";
+            break;
+        case SIGTTIN:
+            name = "SIGTTIN";
+            break;
+        case SIGTTOU:
+            name = "SIGTTOU";
+            break;
+        case SIGSYS:
+            name = "SIGSYS";
+            break;
         default:
             if (signum >= SIGRTMIN && signum <= SIGRTMAX) {
                 snprintf(buf, size, "SIGRTMIN+%d", signum - SIGRTMIN);

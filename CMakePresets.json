@@ -10,8 +10,7 @@
       "name": "base",
       "hidden": true,
       "cacheVariables": {
-        "INFRA_BUILD_TESTS": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "INFRA_BUILD_TESTS": "ON"
       }
     },
     {
@@ -57,6 +56,26 @@
       "inherits": "base-release",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/linux-release-make"
+    },
+    {
+      "name": "linux-debug-static-ninja",
+      "displayName": "Linux Debug Static (Ninja)",
+      "inherits": "base-debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-debug-static-ninja",
+      "cacheVariables": {
+        "INFRA_LIBRARY_TYPE": "STATIC"
+      }
+    },
+    {
+      "name": "linux-asan-ninja",
+      "displayName": "Linux ASan (Ninja)",
+      "inherits": "base-debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-asan-ninja",
+      "cacheVariables": {
+        "INFRA_ENABLE_ASAN": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -75,6 +94,14 @@
     {
       "name": "linux-release-make",
       "configurePreset": "linux-release-make"
+    },
+    {
+      "name": "linux-debug-static-ninja",
+      "configurePreset": "linux-debug-static-ninja"
+    },
+    {
+      "name": "linux-asan-ninja",
+      "configurePreset": "linux-asan-ninja"
     }
   ]
 }

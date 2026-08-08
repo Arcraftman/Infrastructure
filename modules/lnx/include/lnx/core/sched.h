@@ -2,6 +2,7 @@
 #define LNX_SCHED_H
 
 #include "lnx/def.h"
+
 #include <sys/types.h>
 
 #ifdef __cplusplus
@@ -35,7 +36,7 @@ LNX_API int lnx_thread_pin_cpu(int cpu);
  * Get the CPU affinity mask for the current process.
  * Returns 0 on success, -1 on error.
  */
-LNX_API int lnx_thread_get_affinity(unsigned long *mask, size_t size);
+LNX_API int lnx_thread_get_affinity(unsigned long* mask, size_t size);
 
 /* =========================================================================
  * Scheduling
@@ -43,15 +44,15 @@ LNX_API int lnx_thread_get_affinity(unsigned long *mask, size_t size);
 
 /** Scheduling policy names. */
 typedef enum {
-    LNX_SCHED_NORMAL  = 0, /** SCHED_OTHER */
-    LNX_SCHED_FIFO    = 1, /** SCHED_FIFO */
-    LNX_SCHED_RR      = 2, /** SCHED_RR */
-    LNX_SCHED_BATCH   = 3, /** SCHED_BATCH */
-    LNX_SCHED_IDLE    = 5, /** SCHED_IDLE */
+    LNX_SCHED_NORMAL = 0, /** SCHED_OTHER */
+    LNX_SCHED_FIFO = 1,   /** SCHED_FIFO */
+    LNX_SCHED_RR = 2,     /** SCHED_RR */
+    LNX_SCHED_BATCH = 3,  /** SCHED_BATCH */
+    LNX_SCHED_IDLE = 5,   /** SCHED_IDLE */
 } lnx_sched_policy_t;
 
 /** Returns the scheduling policy name as a string (e.g., "SCHED_OTHER"). */
-LNX_API const char *lnx_sched_policy_name(lnx_sched_policy_t policy);
+LNX_API const char* lnx_sched_policy_name(lnx_sched_policy_t policy);
 
 /**
  * Set the scheduling policy and priority for the current process.
@@ -77,7 +78,7 @@ LNX_API long lnx_page_size(void);
 LNX_API long lnx_page_size_cached(void);
 
 /** Returns the number of huge page size options available. */
-LNX_API int lnx_huge_page_sizes(long *sizes, int max_count);
+LNX_API int lnx_huge_page_sizes(long* sizes, int max_count);
 
 /** Returns total physical RAM in bytes, or 0 on error. */
 LNX_API unsigned long long lnx_total_ram(void);
@@ -104,7 +105,7 @@ LNX_API int lnx_sched_ticks_per_sec(void);
  * @param idle_sec    [out] Idle seconds (may be NULL).
  * @return 0 on success, -1 on error.
  */
-LNX_API int lnx_sched_uptime(double *uptime_sec, double *idle_sec);
+LNX_API int lnx_sched_uptime(double* uptime_sec, double* idle_sec);
 
 /**
  * Read system load average.
@@ -113,7 +114,7 @@ LNX_API int lnx_sched_uptime(double *uptime_sec, double *idle_sec);
  * @param load15 [out] 15-minute load (may be NULL).
  * @return 0 on success, -1 on error.
  */
-LNX_API int lnx_sched_loadavg(double *load1, double *load5, double *load15);
+LNX_API int lnx_sched_loadavg(double* load1, double* load5, double* load15);
 
 #ifdef __cplusplus
 }

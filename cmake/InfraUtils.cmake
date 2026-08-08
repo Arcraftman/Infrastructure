@@ -7,8 +7,9 @@
 # 防止重复包含
 if(DEFINED INFRA_UTILS_INCLUDED)
     return()
+else()
+    set(INFRA_UTILS_INCLUDED TRUE)
 endif()
-set(INFRA_UTILS_INCLUDED TRUE)
 
 # ---------------------------------------------------------------------------
 # 日志辅助函数 - 带有 "Infra:" 前缀的薄包装器
@@ -50,8 +51,13 @@ function(infra_update_file FILEPATH CONTENT)
         file(READ "${FILEPATH}" OLD)
         # 如果内容相同，跳过写入
         if("${OLD}" STREQUAL "${CONTENT}")
+            infra_debug("File ${FILEPATH} unchanged, skipping")
             return()
+        else()
+            infra_debug("File ${FILEPATH} changed, updating")
         endif()
+    else()
+        infra_debug("File ${FILEPATH} does not exist, creating")
     endif()
     # 写入新内容
     file(WRITE "${FILEPATH}" "${CONTENT}")

@@ -1,7 +1,7 @@
 #ifndef STK_DETAIL_LIST_H
 #define STK_DETAIL_LIST_H
 
-#define STK_LIST_DECLARE_BASIC(type, prefix)                                                 \
+#define STK_LIST_DECLARE_BASIC(type, prefix)                                             \
     typedef struct stk_list_##prefix##_node {                                            \
         type data;                                                                       \
         struct stk_list_##prefix##_node* prev;                                           \
@@ -32,7 +32,7 @@
     STK_API void stk_list_##prefix##_reverse(stk_list_##prefix* l);                      \
     STK_API void stk_list_##prefix##_sort(stk_list_##prefix* l);
 
-#define STK_LIST_DECLARE_STRUCT(type, prefix)                                                \
+#define STK_LIST_DECLARE_STRUCT(type, prefix)                                            \
     typedef struct stk_list_##prefix##_node {                                            \
         type data;                                                                       \
         struct stk_list_##prefix##_node* prev;                                           \
@@ -64,7 +64,7 @@
     STK_API void stk_list_##prefix##_sort(stk_list_##prefix* l);
 
 // Basic type implementation
-#define STK_LIST_IMPLEMENT_BASIC(type, prefix)                                                         \
+#define STK_LIST_IMPLEMENT_BASIC(type, prefix)                                                     \
     static stk_list_##prefix##_node* stk_list_##prefix##_create_node(type val)                     \
     {                                                                                              \
         stk_list_##prefix##_node* node = malloc(sizeof(stk_list_##prefix##_node));                 \
@@ -306,7 +306,7 @@
     }
 
 // Struct type implementation (requires custom comparison function)
-#define STK_LIST_IMPLEMENT_STRUCT(type, prefix, cmp_func)                                              \
+#define STK_LIST_IMPLEMENT_STRUCT(type, prefix, cmp_func)                                          \
     static stk_list_##prefix##_node* stk_list_##prefix##_create_node(type val)                     \
     {                                                                                              \
         stk_list_##prefix##_node* node = malloc(sizeof(stk_list_##prefix##_node));                 \

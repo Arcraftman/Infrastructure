@@ -1,23 +1,26 @@
 #ifndef STK_CORE_DEQUE_H
 #define STK_CORE_DEQUE_H
 
+#include "stk/def.h"
+#include "stk/utils/status.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* =========================================================================
  * 双端队列 (Deque)
- * 
+ *
  * 基于循环数组实现，支持在头部和尾部进行 O(1) 的插入和删除。
  * 存储 void* 类型，可存放任意数据指针。
- * 
+ *
  * 时间复杂度:
  *   - push_front/push_back: O(1) 均摊
  *   - pop_front/pop_back:   O(1)
  *   - front/back:           O(1)
  *   - get/set:              O(1)
  *   - insert/erase:         O(n)
- * 
+ *
  * Basic usage:
  * @code
  *   stk_deque dq;
@@ -31,11 +34,11 @@ extern "C" {
  * ========================================================================= */
 
 typedef struct {
-    void** data;       /* 元素数组 */
-    size_t head;       /* 头部索引 */
-    size_t tail;       /* 尾部索引（指向下一个空位） */
-    size_t size;       /* 当前元素数量 */
-    size_t capacity;   /* 当前容量 */
+    void** data;     /* 元素数组 */
+    size_t head;     /* 头部索引 */
+    size_t tail;     /* 尾部索引（指向下一个空位） */
+    size_t size;     /* 当前元素数量 */
+    size_t capacity; /* 当前容量 */
 } stk_deque;
 
 /* =========================================================================
@@ -138,8 +141,8 @@ STK_API STK_STATUS stk_deque_swap(stk_deque* a, stk_deque* b);
 
 /* 遍历队列，对每个元素执行函数（返回 false 停止遍历） */
 STK_API STK_STATUS stk_deque_foreach(const stk_deque* dq,
-                                       bool (*fn)(void* data, void* user_data),
-                                       void* user_data);
+                                     bool (*fn)(void* data, void* user_data),
+                                     void* user_data);
 
 #ifdef __cplusplus
 }

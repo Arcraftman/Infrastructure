@@ -13,6 +13,12 @@ list(APPEND CMAKE_MODULE_PATH ${INFRA_CMAKE_DIR})
 # 导入所有已安装的目标
 include("${INFRA_CMAKE_DIR}/infra-targets.cmake" OPTIONAL)
 
+if(EXISTS "${INFRA_CMAKE_DIR}/infra-targets.cmake")
+    message(STATUS "[Infra] Loaded infra-targets.cmake")
+else()
+    message(STATUS "[Infra] infra-targets.cmake not found (optional)")
+endif()
+
 # 设置版本和包含路径
 set(INFRA_VERSION "@INFRA_VERSION_STRING@")
 set(INFRA_INCLUDE_DIRS "@PACKAGE_INFRA_INCLUDE_DIR@")
@@ -22,8 +28,15 @@ set(INFRA_LIBRARIES "")
 foreach(MODULE @INFRA_MODULES@)
     if(TARGET infra::${MODULE})
         list(APPEND INFRA_LIBRARIES infra::${MODULE})
+        message(STATUS "[Infra] Found module: ${MODULE}")
+    else()
+        message(STATUS "[Infra] Module not found: ${MODULE}")
     endif()
 endforeach()
+
+if(NOT INFRA_LIBRARIES)
+    message(STATUS "[Infra] No modules found")
+endif()
 
 # 验证所需组件
 check_required_components(infra)

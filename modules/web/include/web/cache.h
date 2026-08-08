@@ -25,8 +25,7 @@ typedef struct web_cache web_cache_t;
  * @param ttl_secs     Time-to-live in seconds (0 for default 60).
  * @return New cache, or NULL on error.
  */
-WEB_API web_cache_t *
-web_cache_create(size_t max_entries, long ttl_secs);
+WEB_API web_cache_t* web_cache_create(size_t max_entries, long ttl_secs);
 
 /**
  * Store a response in the cache.
@@ -38,8 +37,7 @@ web_cache_create(size_t max_entries, long ttl_secs);
  * @return 0 on success, -1 on error.
  */
 WEB_API int
-web_cache_set(web_cache_t *cache, const char *key,
-              web_response_t *resp, const char *etag);
+web_cache_set(web_cache_t* cache, const char* key, web_response_t* resp, const char* etag);
 
 /**
  * Retrieve a response from the cache.
@@ -54,29 +52,25 @@ web_cache_set(web_cache_t *cache, const char *key,
  *         but hit is set to 0 and WEB_STATUS_NOT_MODIFIED is signaled via
  *         a special response.
  */
-WEB_API const web_response_t *
-web_cache_get(web_cache_t *cache, const char *key,
-              const char *ims, const char *inmatch, int *hit);
+WEB_API const web_response_t*
+web_cache_get(web_cache_t* cache, const char* key, const char* ims, const char* inmatch, int* hit);
 
 /**
  * Invalidate a cached response.
  * @param cache Cache instance.
  * @param key   Cache key. If NULL, all entries are invalidated.
  */
-WEB_API void
-web_cache_invalidate(web_cache_t *cache, const char *key);
+WEB_API void web_cache_invalidate(web_cache_t* cache, const char* key);
 
 /**
  * Get the current number of entries in the cache.
  */
-WEB_API size_t
-web_cache_count(const web_cache_t *cache);
+WEB_API size_t web_cache_count(const web_cache_t* cache);
 
 /**
  * Destroy the cache and all cached responses.
  */
-WEB_API void
-web_cache_destroy(web_cache_t *cache);
+WEB_API void web_cache_destroy(web_cache_t* cache);
 
 #ifdef __cplusplus
 }

@@ -227,10 +227,14 @@ infra_register_component(web session
 
 infra_finalize_module(web)
 
-if(INFRA_BUILD_TESTS)
-    if(EXISTS ${INFRA_MODULE_WEB_ROOT_DIR}/tests/CMakeLists.txt)
-        add_subdirectory(${INFRA_MODULE_WEB_ROOT_DIR}/tests)
-    else()
-        infra_message(STATUS "WEB tests directory not found, skipping")
-    endif()
+# sigaction、fd_set、strdup 等 POSIX/GNU 接口需要显式启用特性声明。
+target_compile_definitions(web PRIVATE _GNU_SOURCE)
+
+if(INFRA_BUILD_TESTS AND EXISTS "${INFRA_MODULE_WEB_ROOT_DIR}/tests/CMakeLists.txt")
+    add_subdirectory(tests)
+endif()
+
+set(WEB_EXAMPLES_CMAKE "${INFRA_MODULE_WEB_ROOT_DIR}/examples/CMakeLists.txt")
+if(INFRA_BUILD_EXAMPLES AND EXISTS "${WEB_EXAMPLES_CMAKE}")
+    add_subdirectory("${INFRA_MODULE_WEB_ROOT_DIR}/examples" "${CMAKE_CURRENT_BINARY_DIR}/examples")
 endif()

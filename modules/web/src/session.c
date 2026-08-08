@@ -1,428 +1,216 @@
 #include "web/session.h"
 
-#include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <time.h>
 
-/* =========================================================================
- * Internal types
- * ========================================================================= */
+#define SESSION_ID_LEN 32
 
-#define SESSION_HASH_SIZE 256
-#define SESSION_ID_LEN    32    /* hex string = 128 bits */
-#define SESSION_KEY_MAX   256
-#define SESSION_VALUE_MAX 8192
+typedef struct session_value {
+    char* key;
+    char* value;
+    struct session_value* next;
+} session_value_t;
 
-/* Hash chain node */
-typedef struct session_data {
-    char               *key;
-    void               *value;
-    size_t              value_len;
-    struct session_data *next;
-} session_data_t;
-
-typedef struct session_entry {
-    char                id[SESSION_ID_LEN + 1];
-    session_data_t     *data;
-    time_t              created;
-    time_t              accessed;
-    int                 ttl_sec;          /* per-session TTL override      */
-    struct session_entry *hash_next;
-    struct session_entry *prev;           /* expiry list */
-    struct session_entry *next;
-} session_entry_t;
-
-struct web_session_store {
-    session_entry_t  *hash_table[SESSION_HASH_SIZE];
-    session_entry_t  *expire_head;         /* oldest access first */
-    session_entry_t  *expire_tail;
-    int               default_ttl;         /* seconds */
-    int               cleanup_interval;
-    time_t            last_cleanup;
-    size_t            count;
-    pthread_mutex_t   lock;
+struct web_session {
+    char id[SESSION_ID_LEN + 1];
+    time_t accessed;
+    session_value_t* values;
+    struct web_session* next;
 };
 
-/* =========================================================================
- * Hash helpers
- * ========================================================================= */
+struct web_session_store {
+    web_session_t* sessions;
+    long expiry_secs;
+    pthread_mutex_t lock;
+};
 
-static size_t
-hash_id(const char *id)
+static void make_id(char id[SESSION_ID_LEN + 1])
 {
-    size_t h = 5381;
-    int c;
-    while ((c = (unsigned char)*id++))
-        h = ((h << 5) + h) + (size_t)c;
-    return h % SESSION_HASH_SIZE;
-}
-
-/* =========================================================================
- * Session ID generation
- * ========================================================================= */
-
-static void
-generate_id(char *buf, size_t len)
-{
-    static const char HEX[] = "0123456789abcdef";
+    static const char hex[] = "0123456789abcdef";
+    unsigned long seed = (unsigned long)time(NULL) ^ (unsigned long)(uintptr_t)id;
     size_t i;
-
-    /* Fallback: use time + pid + cheap pseudo-random */
-    time_t t = time(NULL);
-    unsigned int r = (unsigned int)((t & 0xFFFF) ^ ((t >> 16) & 0xFFFF));
-    r ^= (unsigned int)(uintptr_t)buf; /* some ASLR entropy */
-
-    for (i = 0; i < len - 1; i++) {
-        r = r * 1103515245U + 12345U;
-        buf[i] = HEX[(r >> 16) & 0x0F];
+    for (i = 0; i < SESSION_ID_LEN; ++i) {
+        seed = seed * 1103515245UL + 12345UL;
+        id[i] = hex[(seed >> 28) & 0x0f];
     }
-    buf[len - 1] = '\0';
+    id[SESSION_ID_LEN] = '\0';
 }
 
-/* =========================================================================
- * Entry lifecycle
- * ========================================================================= */
-
-static session_entry_t *
-entry_find(web_session_store_t *store, const char *sid)
+static void values_free(session_value_t* value)
 {
-    size_t h = hash_id(sid);
-    for (session_entry_t *e = store->hash_table[h]; e; e = e->hash_next)
-        if (strcmp(e->id, sid) == 0)
-            return e;
+    while (value) {
+        session_value_t* next = value->next;
+        free(value->key);
+        free(value->value);
+        free(value);
+        value = next;
+    }
+}
+
+static web_session_t* find_session(web_session_store_t* store, const char* id)
+{
+    web_session_t* session;
+    for (session = store->sessions; session; session = session->next) {
+        if (strcmp(session->id, id) == 0)
+            return session;
+    }
     return NULL;
 }
 
-static void
-entry_link_expire(web_session_store_t *store, session_entry_t *e)
+WEB_API web_session_store_t* web_session_store_create(long expiry_secs)
 {
-    /* Remove from current position */
-    if (e->prev) e->prev->next = e->next;
-    if (e->next) e->next->prev = e->prev;
-    if (store->expire_head == e) store->expire_head = e->next;
-    if (store->expire_tail == e) store->expire_tail = e->prev;
-
-    /* Insert at tail */
-    e->prev = store->expire_tail;
-    e->next = NULL;
-    if (store->expire_tail)
-        store->expire_tail->next = e;
-    else
-        store->expire_head = e;
-    store->expire_tail = e;
-}
-
-static void
-entry_destroy(web_session_store_t *store, session_entry_t *e)
-{
-    if (!e) return;
-
-    /* Unlink from hash */
-    size_t h = hash_id(e->id);
-    session_entry_t **pp = &store->hash_table[h];
-    while (*pp) {
-        if (*pp == e) { *pp = e->hash_next; break; }
-        pp = &(*pp)->hash_next;
+    web_session_store_t* store = (web_session_store_t*)calloc(1, sizeof(*store));
+    if (!store)
+        return NULL;
+    store->expiry_secs = expiry_secs > 0 ? expiry_secs : 3600;
+    if (pthread_mutex_init(&store->lock, NULL) != 0) {
+        free(store);
+        return NULL;
     }
-
-    /* Unlink from expire list */
-    if (e->prev) e->prev->next = e->next;
-    if (e->next) e->next->prev = e->prev;
-    if (store->expire_head == e) store->expire_head = e->next;
-    if (store->expire_tail == e) store->expire_tail = e->prev;
-
-    /* Free data */
-    session_data_t *d = e->data;
-    while (d) {
-        session_data_t *next = d->next;
-        free(d->key);
-        free(d->value);
-        free(d);
-        d = next;
-    }
-    free(e);
-    store->count--;
-}
-
-/* =========================================================================
- * Cleanup expired sessions
- * ========================================================================= */
-
-static void
-cleanup_expired(web_session_store_t *store)
-{
-    time_t now = time(NULL);
-    if (store->cleanup_interval > 0 &&
-        (now - store->last_cleanup) < store->cleanup_interval)
-        return;
-
-    store->last_cleanup = now;
-
-    /* Walk expire list from head (oldest) */
-    session_entry_t *e = store->expire_head;
-    while (e) {
-        session_entry_t *next = e->next;
-        int ttl = e->ttl_sec > 0 ? e->ttl_sec : store->default_ttl;
-        if (ttl > 0 && (now - e->accessed) > ttl)
-            entry_destroy(store, e);
-        e = next;
-    }
-}
-
-/* =========================================================================
- * Public API
- * ========================================================================= */
-
-WEB_API web_session_store_t *
-web_session_store_create(int default_ttl, int cleanup_interval)
-{
-    web_session_store_t *store = (web_session_store_t *)calloc(1, sizeof(*store));
-    if (!store) return NULL;
-
-    store->default_ttl     = default_ttl > 0 ? default_ttl : 1800;  /* 30 min */
-    store->cleanup_interval = cleanup_interval > 0 ? cleanup_interval : 60;
-    store->last_cleanup    = time(NULL);
-    pthread_mutex_init(&store->lock, NULL);
     return store;
 }
 
-WEB_API char *
-web_session_create(web_session_store_t *store)
+WEB_API web_session_t* web_session_get(web_session_store_t* store,
+                                        const char* session_id,
+                                        const char** new_session_id)
 {
-    if (!store) { errno = EINVAL; return NULL; }
+    web_session_t* session;
+    if (new_session_id)
+        *new_session_id = NULL;
+    if (!store)
+        return NULL;
 
-    char sid[SESSION_ID_LEN + 1];
-    session_entry_t *e = NULL;
-
-    /* Retry loop to avoid ID collision */
-    for (int attempt = 0; attempt < 10; attempt++) {
-        generate_id(sid, sizeof(sid));
-
-        pthread_mutex_lock(&store->lock);
-        if (!entry_find(store, sid)) {
-            e = (session_entry_t *)calloc(1, sizeof(*e));
-            if (e) {
-                memcpy(e->id, sid, SESSION_ID_LEN + 1);
-                e->created  = time(NULL);
-                e->accessed = e->created;
-                e->ttl_sec  = 0; /* use default */
-
-                /* Hash insert */
-                size_t h = hash_id(sid);
-                e->hash_next = store->hash_table[h];
-                store->hash_table[h] = e;
-
-                /* Expire list (tail) */
-                e->prev = store->expire_tail;
-                e->next = NULL;
-                if (store->expire_tail)
-                    store->expire_tail->next = e;
-                else
-                    store->expire_head = e;
-                store->expire_tail = e;
-
-                store->count++;
-            }
+    pthread_mutex_lock(&store->lock);
+    session = session_id ? find_session(store, session_id) : NULL;
+    if (session && store->expiry_secs > 0 && time(NULL) - session->accessed >= store->expiry_secs)
+        session = NULL;
+    if (!session) {
+        session = (web_session_t*)calloc(1, sizeof(*session));
+        if (!session) {
             pthread_mutex_unlock(&store->lock);
-            if (e) break;
+            return NULL;
+        }
+        make_id(session->id);
+        session->next = store->sessions;
+        store->sessions = session;
+        if (new_session_id)
+            *new_session_id = session->id;
+    }
+    session->accessed = time(NULL);
+    pthread_mutex_unlock(&store->lock);
+    return session;
+}
+
+WEB_API int web_session_set(web_session_store_t* store,
+                            web_session_t* session,
+                            const char* key,
+                            const char* value)
+{
+    session_value_t* item;
+    if (!store || !session || !key || key[0] == '\0')
+        return -1;
+    pthread_mutex_lock(&store->lock);
+    for (item = session->values; item; item = item->next) {
+        if (strcmp(item->key, key) == 0) {
+            char* copy = value ? strdup(value) : NULL;
+            if (value && !copy) {
+                pthread_mutex_unlock(&store->lock);
+                return -1;
+            }
+            free(item->value);
+            item->value = copy;
+            pthread_mutex_unlock(&store->lock);
+            return 0;
+        }
+    }
+    if (!value) {
+        pthread_mutex_unlock(&store->lock);
+        return 0;
+    }
+    item = (session_value_t*)calloc(1, sizeof(*item));
+    if (!item || !(item->key = strdup(key)) || !(item->value = strdup(value))) {
+        if (item) {
+            free(item->key);
+            free(item->value);
+            free(item);
+        }
+        pthread_mutex_unlock(&store->lock);
+        return -1;
+    }
+    item->next = session->values;
+    session->values = item;
+    pthread_mutex_unlock(&store->lock);
+    return 0;
+}
+
+WEB_API const char* web_session_get_value(const web_session_t* session, const char* key)
+{
+    session_value_t* item;
+    if (!session || !key)
+        return NULL;
+    for (item = session->values; item; item = item->next) {
+        if (strcmp(item->key, key) == 0)
+            return item->value;
+    }
+    return NULL;
+}
+
+WEB_API void web_session_destroy(web_session_store_t* store, web_session_t* session)
+{
+    web_session_t** link;
+    if (!store || !session)
+        return;
+    pthread_mutex_lock(&store->lock);
+    link = &store->sessions;
+    while (*link && *link != session)
+        link = &(*link)->next;
+    if (*link == session) {
+        *link = session->next;
+        values_free(session->values);
+        free(session);
+    }
+    pthread_mutex_unlock(&store->lock);
+}
+
+WEB_API void web_session_store_cleanup(web_session_store_t* store)
+{
+    web_session_t** link;
+    time_t now;
+    if (!store)
+        return;
+    pthread_mutex_lock(&store->lock);
+    now = time(NULL);
+    link = &store->sessions;
+    while (*link) {
+        web_session_t* session = *link;
+        if (now - session->accessed >= store->expiry_secs) {
+            *link = session->next;
+            values_free(session->values);
+            free(session);
         } else {
-            pthread_mutex_unlock(&store->lock);
+            link = &session->next;
         }
     }
-
-    if (!e) return NULL;
-    return strdup(e->id);
-}
-
-WEB_API int
-web_session_set(web_session_store_t *store, const char *session_id,
-                const char *key, const void *value, size_t value_len)
-{
-    if (!store || !session_id || !key) return -1;
-    if (strlen(key) >= SESSION_KEY_MAX) { errno = EINVAL; return -1; }
-    if (value_len >= SESSION_VALUE_MAX) { errno = EINVAL; return -1; }
-
-    pthread_mutex_lock(&store->lock);
-
-    cleanup_expired(store);
-
-    session_entry_t *e = entry_find(store, session_id);
-    if (!e) {
-        pthread_mutex_unlock(&store->lock);
-        errno = ENOENT;
-        return -1;
-    }
-    e->accessed = time(NULL);
-    entry_link_expire(store, e);
-
-    /* Find or create data entry */
-    session_data_t **pp = &e->data;
-    while (*pp) {
-        if (strcmp((*pp)->key, key) == 0) {
-            /* Update existing */
-            free((*pp)->value);
-            (*pp)->value = NULL;
-            (*pp)->value_len = 0;
-            if (value && value_len > 0) {
-                (*pp)->value = malloc(value_len);
-                if ((*pp)->value) {
-                    memcpy((*pp)->value, value, value_len);
-                    (*pp)->value_len = value_len;
-                }
-            }
-            pthread_mutex_unlock(&store->lock);
-            return 0;
-        }
-        pp = &(*pp)->next;
-    }
-
-    /* Create new data entry */
-    session_data_t *d = (session_data_t *)calloc(1, sizeof(*d));
-    if (!d) { pthread_mutex_unlock(&store->lock); return -1; }
-    d->key = strdup(key);
-    if (!d->key) { free(d); pthread_mutex_unlock(&store->lock); return -1; }
-    if (value && value_len > 0) {
-        d->value = malloc(value_len);
-        if (d->value) {
-            memcpy(d->value, value, value_len);
-            d->value_len = value_len;
-        }
-    }
-    d->next = e->data;
-    e->data = d;
-
     pthread_mutex_unlock(&store->lock);
-    return 0;
 }
 
-WEB_API int
-web_session_get(web_session_store_t *store, const char *session_id,
-                const char *key, void **value, size_t *value_len)
+WEB_API void web_session_store_destroy(web_session_store_t* store)
 {
-    if (!store || !session_id || !key || !value || !value_len) return -1;
-
+    web_session_t* session;
+    if (!store)
+        return;
     pthread_mutex_lock(&store->lock);
-
-    cleanup_expired(store);
-
-    session_entry_t *e = entry_find(store, session_id);
-    if (!e) {
-        pthread_mutex_unlock(&store->lock);
-        errno = ENOENT;
-        return -1;
+    session = store->sessions;
+    while (session) {
+        web_session_t* next = session->next;
+        values_free(session->values);
+        free(session);
+        session = next;
     }
-
-    /* Check TTL */
-    int ttl = e->ttl_sec > 0 ? e->ttl_sec : store->default_ttl;
-    if (ttl > 0) {
-        time_t now = time(NULL);
-        if (now - e->accessed > ttl) {
-            entry_destroy(store, e);
-            pthread_mutex_unlock(&store->lock);
-            errno = ENOENT;
-            return -1;
-        }
-    }
-
-    e->accessed = time(NULL);
-    entry_link_expire(store, e);
-
-    for (session_data_t *d = e->data; d; d = d->next) {
-        if (strcmp(d->key, key) == 0) {
-            *value = d->value;
-            *value_len = d->value_len;
-            pthread_mutex_unlock(&store->lock);
-            return 0;
-        }
-    }
-
-    *value = NULL;
-    *value_len = 0;
-    pthread_mutex_unlock(&store->lock);
-    return -1;
-}
-
-WEB_API int
-web_session_delete(web_session_store_t *store, const char *session_id)
-{
-    if (!store || !session_id) return -1;
-
-    pthread_mutex_lock(&store->lock);
-
-    session_entry_t *e = entry_find(store, session_id);
-    if (!e) {
-        pthread_mutex_unlock(&store->lock);
-        return -1;
-    }
-
-    entry_destroy(store, e);
-    pthread_mutex_unlock(&store->lock);
-    return 0;
-}
-
-WEB_API int
-web_session_touch(web_session_store_t *store, const char *session_id)
-{
-    if (!store || !session_id) return -1;
-
-    pthread_mutex_lock(&store->lock);
-
-    session_entry_t *e = entry_find(store, session_id);
-    if (!e) {
-        pthread_mutex_unlock(&store->lock);
-        return -1;
-    }
-
-    e->accessed = time(NULL);
-    entry_link_expire(store, e);
-    pthread_mutex_unlock(&store->lock);
-    return 0;
-}
-
-WEB_API size_t
-web_session_count(const web_session_store_t *store)
-{
-    if (!store) return 0;
-    size_t cnt;
-    pthread_mutex_lock(&((web_session_store_t *)store)->lock);
-    cnt = store->count;
-    pthread_mutex_unlock(&((web_session_store_t *)store)->lock);
-    return cnt;
-}
-
-WEB_API void
-web_session_store_destroy(web_session_store_t *store)
-{
-    if (!store) return;
-
-    pthread_mutex_lock(&store->lock);
-
-    for (size_t i = 0; i < SESSION_HASH_SIZE; i++) {
-        session_entry_t *e = store->hash_table[i];
-        while (e) {
-            session_entry_t *next = e->hash_next;
-            session_data_t *d = e->data;
-            while (d) {
-                session_data_t *dnext = d->next;
-                free(d->key);
-                free(d->value);
-                free(d);
-                d = dnext;
-            }
-            free(e);
-            e = next;
-        }
-        store->hash_table[i] = NULL;
-    }
-    store->expire_head = NULL;
-    store->expire_tail = NULL;
-    store->count = 0;
-
+    store->sessions = NULL;
     pthread_mutex_unlock(&store->lock);
     pthread_mutex_destroy(&store->lock);
-    memset(store, 0, sizeof(*store));
     free(store);
 }

@@ -1,6 +1,8 @@
 #ifndef STK_CORE_RINGBUF_H
 #define STK_CORE_RINGBUF_H
 
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -8,19 +10,19 @@ extern "C" {
 
 /* =========================================================================
  * 环形缓冲区 (Ring Buffer / Circular Buffer)
- * 
+ *
  * 固定大小的循环缓冲区，适合生产者-消费者场景。
  * 支持单生产者单消费者 (SPSC) 的无锁操作。
- * 
+ *
  * 特性:
  *   - 容量自动调整为2的幂（便于位运算优化）
  *   - 支持覆盖写入（强制写入）
  *   - 支持查看（peek）不消费数据
  *   - SPSC 模式无锁操作
- * 
+ *
  * 时间复杂度:
  *   - 所有操作均为 O(1)
- * 
+ *
  * Basic usage:
  * @code
  *   stk_ringbuf rb;
@@ -32,11 +34,11 @@ extern "C" {
  * ========================================================================= */
 
 typedef struct {
-    uint8_t* buffer;   /* 数据缓冲区 */
-    size_t   head;     /* 读指针 */
-    size_t   tail;     /* 写指针 */
-    size_t   capacity; /* 缓冲区容量 (必须是2的幂) */
-    bool     full;     /* 是否已满 */
+    uint8_t* buffer; /* 数据缓冲区 */
+    size_t head;     /* 读指针 */
+    size_t tail;     /* 写指针 */
+    size_t capacity; /* 缓冲区容量 (必须是2的幂) */
+    bool full;       /* 是否已满 */
 } stk_ringbuf;
 
 /* =========================================================================
@@ -112,7 +114,7 @@ STK_API bool stk_ringbuf_full(const stk_ringbuf* rb);
 
 /* =========================================================================
  * 线程安全操作 (SPSC - Single Producer Single Consumer)
- * 
+ *
  * 这些函数是无锁的，适用于单生产者单消费者场景。
  * 不需要额外的互斥锁，但必须在单生产者单消费者模式下使用。
  * ========================================================================= */

@@ -26,8 +26,9 @@
 # 防止重复包含
 if(DEFINED INFRA_MODULES_INCLUDED)
     return()
+else()
+    set(INFRA_MODULES_INCLUDED TRUE)
 endif()
-set(INFRA_MODULES_INCLUDED TRUE)
 
 # 包含依赖的工具模块
 include(InfraUtils)
@@ -49,11 +50,14 @@ set(INFRA_OUTPUT_DIRECTORIES_SET FALSE)
 # ============================================================================
 macro(infra_setup_output_dirs)
     if(INFRA_OUTPUT_DIRECTORIES_SET)
+        infra_debug("Output directories already set, skipping")
         return()
+    else()
+        # 调用 InfraUtils 中的函数设置输出目录
+        infra_set_output_dirs()
+        set(INFRA_OUTPUT_DIRECTORIES_SET TRUE)
+        infra_debug("Output directories set")
     endif()
-    # 调用 InfraUtils 中的函数设置输出目录
-    infra_set_output_dirs()
-    set(INFRA_OUTPUT_DIRECTORIES_SET TRUE)
 endmacro()
 
 # ============================================================================
@@ -76,6 +80,11 @@ macro(infra_setup_module_dirs MODULE_NAME)
     set(INFRA_MODULE_${_MODULE}_INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
     # 设置源代码目录：根目录下的 src 文件夹
     set(INFRA_MODULE_${_MODULE}_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    
+    infra_debug("Module ${MODULE_NAME} directories set:")
+    infra_debug("  ROOT: ${INFRA_MODULE_${_MODULE}_ROOT_DIR}")
+    infra_debug("  INC:  ${INFRA_MODULE_${_MODULE}_INC_DIR}")
+    infra_debug("  SRC:  ${INFRA_MODULE_${_MODULE}_SRC_DIR}")
 endmacro()
 
 # ============================================================================
@@ -107,6 +116,9 @@ macro(infra_register_module MODULE_NAME)
         set(INFRA_MODULE_${_MODULE}_COMPILE_DEFS "")
         # 输出信息日志
         infra_info("Registered module '${MODULE_NAME}'")
+        infra_debug("Module ${MODULE_NAME} state initialized")
+    else()
+        infra_debug("Module ${MODULE_NAME} already registered, skipping")
     endif()
 endmacro()
 
@@ -125,7 +137,6 @@ macro(infra_init_module MODULE_NAME)
     infra_register_module(${MODULE_NAME})      # 注册模块
     infra_setup_module_dirs(${MODULE_NAME})    # 设置模块目录
     infra_setup_output_dirs()                  # 设置输出目录
-    infra_info("Initialized module '${MODULE_NAME}'")
 endmacro()
 
 # ============================================================================
@@ -160,6 +171,8 @@ macro(infra_register_component MODULE_NAME COMPONENT_NAME)
     if(NOT COMP_SOURCES)
         infra_warn("Component ${MODULE_NAME}/${COMPONENT_NAME} has no sources")
         return()
+    else()
+        infra_debug("Component ${MODULE_NAME}/${COMPONENT_NAME} has ${COMP_SOURCES} sources")
     endif()
     
     # 将源文件添加到模块的源文件列表
@@ -168,17 +181,22 @@ macro(infra_register_component MODULE_NAME COMPONENT_NAME)
     # 添加私有头文件目录
     foreach(DIR ${COMP_PRIVATE_DIRS})
         list(APPEND INFRA_MODULE_${_MODULE}_INCLUDE_DIRS ${DIR})
+        infra_debug("Added private dir: ${DIR}")
     endforeach()
     
     # 添加编译宏定义
     foreach(DEF ${COMP_COMPILE_DEFS})
         list(APPEND INFRA_MODULE_${_MODULE}_COMPILE_DEFS ${DEF})
+        infra_debug("Added compile def: ${DEF}")
     endforeach()
     
     # 收集链接库（去重）
     foreach(LIB ${COMP_LINK_LIBS})
         if(NOT LIB IN_LIST INFRA_MODULE_${_MODULE}_LINK_LIBS)
             list(APPEND INFRA_MODULE_${_MODULE}_LINK_LIBS ${LIB})
+            infra_debug("Added link lib: ${LIB}")
+        else()
+            infra_debug("Link lib ${LIB} already added, skipping")
         endif()
     endforeach()
     
@@ -204,6 +222,7 @@ macro(infra_finalize_module MODULE_NAME)
     
     # 如果最终库目标已存在，直接返回
     if(TARGET ${LIBRARY_TARGET})
+        infra_debug("Module ${MODULE_NAME} already exists as target, skipping")
         return()
     endif()
     
@@ -214,17 +233,22 @@ macro(infra_finalize_module MODULE_NAME)
     if(NOT SOURCES)
         infra_warn("Module '${MODULE_NAME}' has no sources")
         return()
+    else()
+        infra_debug("Module ${MODULE_NAME} has ${SOURCES} source files")
     endif()
     
     # 根据 BUILD_SHARED_LIBS 决定创建共享库还是静态库
     if(BUILD_SHARED_LIBS)
         add_library(${LIBRARY_TARGET} SHARED ${SOURCES})
+        infra_debug("Creating shared library: ${LIBRARY_TARGET}")
     else()
         add_library(${LIBRARY_TARGET} STATIC ${SOURCES})
+        infra_debug("Creating static library: ${LIBRARY_TARGET}")
     endif()
     
     # 创建别名目标，方便使用 `infra::module_name` 的形式链接
     add_library(infra::${MODULE_NAME} ALIAS ${LIBRARY_TARGET})
+    infra_debug("Created alias: infra::${MODULE_NAME}")
     
     # 设置头文件包含目录（PUBLIC，对外可见）
     target_include_directories(${LIBRARY_TARGET}
@@ -232,34 +256,40 @@ macro(infra_finalize_module MODULE_NAME)
             $<BUILD_INTERFACE:${INFRA_MODULE_${_MODULE}_INC_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
     )
+    infra_debug("Set public include directories for ${LIBRARY_TARGET}")
     
     # 添加额外的私有头文件目录（PRIVATE，仅编译时使用）
     foreach(DIR ${INFRA_MODULE_${_MODULE}_INCLUDE_DIRS})
         target_include_directories(${LIBRARY_TARGET} PRIVATE ${DIR})
+        infra_debug("Added private include: ${DIR}")
     endforeach()
     
     # 添加编译宏定义
     foreach(DEF ${INFRA_MODULE_${_MODULE}_COMPILE_DEFS})
         target_compile_definitions(${LIBRARY_TARGET} PRIVATE ${DEF})
+        infra_debug("Added compile def: ${DEF}")
     endforeach()
-    
-    # 构建共享库时自动添加 DLL 导出宏
+
+    # 不生成额外的 export header：直接通过目标编译定义驱动各模块 def.h
+    # 的手写 API 宏。共享库内部使用 dllexport，消费者使用 dllimport；
+    # GCC/Clang 则使用 visibility("default")。
     if(BUILD_SHARED_LIBS)
-        target_compile_definitions(${LIBRARY_TARGET} PRIVATE
-            ${_MODULE}_DLL
-            ${_MODULE}_EXPORTING
+        target_compile_definitions(${LIBRARY_TARGET}
+            PRIVATE ${_MODULE}_DLL ${_MODULE}_EXPORTING
+            INTERFACE ${_MODULE}_DLL
         )
     endif()
     
     # 链接收集到的依赖库
     if(INFRA_MODULE_${_MODULE}_LINK_LIBS)
         target_link_libraries(${LIBRARY_TARGET} PRIVATE ${INFRA_MODULE_${_MODULE}_LINK_LIBS})
+        infra_debug("Linked libraries: ${INFRA_MODULE_${_MODULE}_LINK_LIBS}")
+    else()
+        infra_debug("No link libraries for ${LIBRARY_TARGET}")
     endif()
     
     # 应用通用的编译器设置
     infra_setup_target(${LIBRARY_TARGET})
-    
-    infra_success("Module '${MODULE_NAME}' created")
 endmacro()
 
 # ============================================================================
@@ -276,11 +306,25 @@ macro(infra_add_module MODULE_NAME)
     # 将模块名转换为大写，用于构建选项变量名
     # 例如：MODULE_NAME=stk -> INFRA_ENABLE_STK
     string(TOUPPER ${MODULE_NAME} MODULE_UPPER)
-    
+
     # 检查是否启用了该模块
     if(NOT INFRA_ENABLE_${MODULE_UPPER})
         infra_info("Module '${MODULE_NAME}' disabled")
+        infra_debug("Module ${MODULE_NAME} disabled by INFRA_ENABLE_${MODULE_UPPER}")
         return()
+    endif()
+
+    # ------------------------------------------------------------------
+    # 平台门控：如果模块声明了支持的平台（INFRA_MODULE_<UPPER>_PLATFORMS），
+    # 而当前平台不在其中，则跳过该模块，避免在不受支持的平台上编译失败。
+    # 例如 modules/lnx/lnx.cmake 里: set(INFRA_MODULE_LNX_PLATFORMS "Linux")
+    # ------------------------------------------------------------------
+    if(DEFINED INFRA_MODULE_${MODULE_UPPER}_PLATFORMS)
+        set(_SUPPORTED_PLATFORMS "${INFRA_MODULE_${MODULE_UPPER}_PLATFORMS}")
+        if(NOT CMAKE_SYSTEM_NAME IN_LIST _SUPPORTED_PLATFORMS)
+            infra_info("Module '${MODULE_NAME}' skipped (requires: ${_SUPPORTED_PLATFORMS}, current: ${CMAKE_SYSTEM_NAME})")
+            return()
+        endif()
     endif()
 
     # 构建模块子目录的完整路径
@@ -288,8 +332,10 @@ macro(infra_add_module MODULE_NAME)
     
     # 检查模块的 CMakeLists.txt 是否存在
     if(NOT EXISTS "${MODULE_PATH}/CMakeLists.txt")
-        infra_warn("Module '${MODULE_NAME}' not found")
+        infra_warn("Module '${MODULE_NAME}' not found at ${MODULE_PATH}")
         return()
+    else()
+        infra_debug("Found module at: ${MODULE_PATH}")
     endif()
 
     # 包含模块子目录
@@ -304,7 +350,12 @@ endmacro()
 # 说明：遍历 INFRA_MODULES 列表，逐个调用 infra_add_module
 # ============================================================================
 macro(infra_add_modules)
-    foreach(MODULE ${INFRA_MODULES})
-        infra_add_module(${MODULE})
-    endforeach()
+    if(INFRA_MODULES)
+        infra_debug("Adding modules: ${INFRA_MODULES}")
+        foreach(MODULE ${INFRA_MODULES})
+            infra_add_module(${MODULE})
+        endforeach()
+    else()
+        infra_debug("No modules to add")
+    endif()
 endmacro()

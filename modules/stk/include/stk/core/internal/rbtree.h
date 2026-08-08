@@ -1,7 +1,6 @@
 #ifndef STK_DETAIL_RBTREE_H
 #define STK_DETAIL_RBTREE_H
 
-
 // ============================================================
 // Basic type red-black tree declaration (int, double, float, etc.) - stores values
 // ============================================================
@@ -76,7 +75,7 @@
     {                                                                                         \
         stk_rbnode_##name* n = (stk_rbnode_##name*)malloc(sizeof(stk_rbnode_##name));         \
         n->data = val;                                                                        \
-        n->color = STK_RB_RED;                                                                    \
+        n->color = STK_RB_RED;                                                                \
         n->left = nil;                                                                        \
         n->right = nil;                                                                       \
         n->parent = nil;                                                                      \
@@ -119,42 +118,42 @@
                                                                                               \
     static void stk_rbtree_##name##_insert_fixup(stk_rbtree_##name* t, stk_rbnode_##name* z)  \
     {                                                                                         \
-        while (z->parent->color == STK_RB_RED) {                                                  \
+        while (z->parent->color == STK_RB_RED) {                                              \
             if (z->parent == z->parent->parent->left) {                                       \
                 stk_rbnode_##name* y = z->parent->parent->right;                              \
-                if (y->color == STK_RB_RED) {                                                     \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    y->color = STK_RB_BLACK;                                                      \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                if (y->color == STK_RB_RED) {                                                 \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    y->color = STK_RB_BLACK;                                                  \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     z = z->parent->parent;                                                    \
                 } else {                                                                      \
                     if (z == z->parent->right) {                                              \
                         z = z->parent;                                                        \
                         stk_rbtree_##name##_left_rotate(t, z);                                \
                     }                                                                         \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     stk_rbtree_##name##_right_rotate(t, z->parent->parent);                   \
                 }                                                                             \
             } else {                                                                          \
                 stk_rbnode_##name* y = z->parent->parent->left;                               \
-                if (y->color == STK_RB_RED) {                                                     \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    y->color = STK_RB_BLACK;                                                      \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                if (y->color == STK_RB_RED) {                                                 \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    y->color = STK_RB_BLACK;                                                  \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     z = z->parent->parent;                                                    \
                 } else {                                                                      \
                     if (z == z->parent->left) {                                               \
                         z = z->parent;                                                        \
                         stk_rbtree_##name##_right_rotate(t, z);                               \
                     }                                                                         \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     stk_rbtree_##name##_left_rotate(t, z->parent->parent);                    \
                 }                                                                             \
             }                                                                                 \
         }                                                                                     \
-        t->root->color = STK_RB_BLACK;                                                            \
+        t->root->color = STK_RB_BLACK;                                                        \
     }                                                                                         \
                                                                                               \
     static stk_rbnode_##name* stk_rbtree_##name##_minimum(stk_rbtree_##name* t,               \
@@ -188,58 +187,58 @@
                                                                                               \
     static void stk_rbtree_##name##_delete_fixup(stk_rbtree_##name* t, stk_rbnode_##name* x)  \
     {                                                                                         \
-        while (x != t->root && x->color == STK_RB_BLACK) {                                        \
+        while (x != t->root && x->color == STK_RB_BLACK) {                                    \
             if (x == x->parent->left) {                                                       \
                 stk_rbnode_##name* w = x->parent->right;                                      \
-                if (w->color == STK_RB_RED) {                                                     \
-                    w->color = STK_RB_BLACK;                                                      \
-                    x->parent->color = STK_RB_RED;                                                \
+                if (w->color == STK_RB_RED) {                                                 \
+                    w->color = STK_RB_BLACK;                                                  \
+                    x->parent->color = STK_RB_RED;                                            \
                     stk_rbtree_##name##_left_rotate(t, x->parent);                            \
                     w = x->parent->right;                                                     \
                 }                                                                             \
-                if (w->left->color == STK_RB_BLACK && w->right->color == STK_RB_BLACK) {              \
-                    w->color = STK_RB_RED;                                                        \
+                if (w->left->color == STK_RB_BLACK && w->right->color == STK_RB_BLACK) {      \
+                    w->color = STK_RB_RED;                                                    \
                     x = x->parent;                                                            \
                 } else {                                                                      \
-                    if (w->right->color == STK_RB_BLACK) {                                        \
-                        w->left->color = STK_RB_BLACK;                                            \
-                        w->color = STK_RB_RED;                                                    \
+                    if (w->right->color == STK_RB_BLACK) {                                    \
+                        w->left->color = STK_RB_BLACK;                                        \
+                        w->color = STK_RB_RED;                                                \
                         stk_rbtree_##name##_right_rotate(t, w);                               \
                         w = x->parent->right;                                                 \
                     }                                                                         \
                     w->color = x->parent->color;                                              \
-                    x->parent->color = STK_RB_BLACK;                                              \
-                    w->right->color = STK_RB_BLACK;                                               \
+                    x->parent->color = STK_RB_BLACK;                                          \
+                    w->right->color = STK_RB_BLACK;                                           \
                     stk_rbtree_##name##_left_rotate(t, x->parent);                            \
                     x = t->root;                                                              \
                 }                                                                             \
             } else {                                                                          \
                 stk_rbnode_##name* w = x->parent->left;                                       \
-                if (w->color == STK_RB_RED) {                                                     \
-                    w->color = STK_RB_BLACK;                                                      \
-                    x->parent->color = STK_RB_RED;                                                \
+                if (w->color == STK_RB_RED) {                                                 \
+                    w->color = STK_RB_BLACK;                                                  \
+                    x->parent->color = STK_RB_RED;                                            \
                     stk_rbtree_##name##_right_rotate(t, x->parent);                           \
                     w = x->parent->left;                                                      \
                 }                                                                             \
-                if (w->right->color == STK_RB_BLACK && w->left->color == STK_RB_BLACK) {              \
-                    w->color = STK_RB_RED;                                                        \
+                if (w->right->color == STK_RB_BLACK && w->left->color == STK_RB_BLACK) {      \
+                    w->color = STK_RB_RED;                                                    \
                     x = x->parent;                                                            \
                 } else {                                                                      \
-                    if (w->left->color == STK_RB_BLACK) {                                         \
-                        w->right->color = STK_RB_BLACK;                                           \
-                        w->color = STK_RB_RED;                                                    \
+                    if (w->left->color == STK_RB_BLACK) {                                     \
+                        w->right->color = STK_RB_BLACK;                                       \
+                        w->color = STK_RB_RED;                                                \
                         stk_rbtree_##name##_left_rotate(t, w);                                \
                         w = x->parent->left;                                                  \
                     }                                                                         \
                     w->color = x->parent->color;                                              \
-                    x->parent->color = STK_RB_BLACK;                                              \
-                    w->left->color = STK_RB_BLACK;                                                \
+                    x->parent->color = STK_RB_BLACK;                                          \
+                    w->left->color = STK_RB_BLACK;                                            \
                     stk_rbtree_##name##_right_rotate(t, x->parent);                           \
                     x = t->root;                                                              \
                 }                                                                             \
             }                                                                                 \
         }                                                                                     \
-        x->color = STK_RB_BLACK;                                                                  \
+        x->color = STK_RB_BLACK;                                                              \
     }                                                                                         \
                                                                                               \
     static void stk_rbtree_##name##_destroy_nodes(stk_rbtree_##name* t, stk_rbnode_##name* n) \
@@ -287,7 +286,7 @@
     void stk_rbtree_##name##_init(stk_rbtree_##name* t)                                       \
     {                                                                                         \
         t->nil = (stk_rbnode_##name*)malloc(sizeof(stk_rbnode_##name));                       \
-        t->nil->color = STK_RB_BLACK;                                                             \
+        t->nil->color = STK_RB_BLACK;                                                         \
         t->nil->left = t->nil->right = t->nil->parent = t->nil;                               \
         t->root = t->nil;                                                                     \
         t->size = 0;                                                                          \
@@ -369,7 +368,7 @@
             y->color = z->color;                                                              \
         }                                                                                     \
                                                                                               \
-        if (y_orig_color == STK_RB_BLACK)                                                         \
+        if (y_orig_color == STK_RB_BLACK)                                                     \
             stk_rbtree_##name##_delete_fixup(t, x);                                           \
         free(z);                                                                              \
         t->size--;                                                                            \
@@ -457,7 +456,7 @@
     {                                                                                         \
         stk_rbnode_##name* n = (stk_rbnode_##name*)malloc(sizeof(stk_rbnode_##name));         \
         n->data = val;                                                                        \
-        n->color = STK_RB_RED;                                                                    \
+        n->color = STK_RB_RED;                                                                \
         n->left = nil;                                                                        \
         n->right = nil;                                                                       \
         n->parent = nil;                                                                      \
@@ -500,42 +499,42 @@
                                                                                               \
     static void stk_rbtree_##name##_insert_fixup(stk_rbtree_##name* t, stk_rbnode_##name* z)  \
     {                                                                                         \
-        while (z->parent->color == STK_RB_RED) {                                                  \
+        while (z->parent->color == STK_RB_RED) {                                              \
             if (z->parent == z->parent->parent->left) {                                       \
                 stk_rbnode_##name* y = z->parent->parent->right;                              \
-                if (y->color == STK_RB_RED) {                                                     \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    y->color = STK_RB_BLACK;                                                      \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                if (y->color == STK_RB_RED) {                                                 \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    y->color = STK_RB_BLACK;                                                  \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     z = z->parent->parent;                                                    \
                 } else {                                                                      \
                     if (z == z->parent->right) {                                              \
                         z = z->parent;                                                        \
                         stk_rbtree_##name##_left_rotate(t, z);                                \
                     }                                                                         \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     stk_rbtree_##name##_right_rotate(t, z->parent->parent);                   \
                 }                                                                             \
             } else {                                                                          \
                 stk_rbnode_##name* y = z->parent->parent->left;                               \
-                if (y->color == STK_RB_RED) {                                                     \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    y->color = STK_RB_BLACK;                                                      \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                if (y->color == STK_RB_RED) {                                                 \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    y->color = STK_RB_BLACK;                                                  \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     z = z->parent->parent;                                                    \
                 } else {                                                                      \
                     if (z == z->parent->left) {                                               \
                         z = z->parent;                                                        \
                         stk_rbtree_##name##_right_rotate(t, z);                               \
                     }                                                                         \
-                    z->parent->color = STK_RB_BLACK;                                              \
-                    z->parent->parent->color = STK_RB_RED;                                        \
+                    z->parent->color = STK_RB_BLACK;                                          \
+                    z->parent->parent->color = STK_RB_RED;                                    \
                     stk_rbtree_##name##_left_rotate(t, z->parent->parent);                    \
                 }                                                                             \
             }                                                                                 \
         }                                                                                     \
-        t->root->color = STK_RB_BLACK;                                                            \
+        t->root->color = STK_RB_BLACK;                                                        \
     }                                                                                         \
                                                                                               \
     static stk_rbnode_##name* stk_rbtree_##name##_minimum(stk_rbtree_##name* t,               \
@@ -569,58 +568,58 @@
                                                                                               \
     static void stk_rbtree_##name##_delete_fixup(stk_rbtree_##name* t, stk_rbnode_##name* x)  \
     {                                                                                         \
-        while (x != t->root && x->color == STK_RB_BLACK) {                                        \
+        while (x != t->root && x->color == STK_RB_BLACK) {                                    \
             if (x == x->parent->left) {                                                       \
                 stk_rbnode_##name* w = x->parent->right;                                      \
-                if (w->color == STK_RB_RED) {                                                     \
-                    w->color = STK_RB_BLACK;                                                      \
-                    x->parent->color = STK_RB_RED;                                                \
+                if (w->color == STK_RB_RED) {                                                 \
+                    w->color = STK_RB_BLACK;                                                  \
+                    x->parent->color = STK_RB_RED;                                            \
                     stk_rbtree_##name##_left_rotate(t, x->parent);                            \
                     w = x->parent->right;                                                     \
                 }                                                                             \
-                if (w->left->color == STK_RB_BLACK && w->right->color == STK_RB_BLACK) {              \
-                    w->color = STK_RB_RED;                                                        \
+                if (w->left->color == STK_RB_BLACK && w->right->color == STK_RB_BLACK) {      \
+                    w->color = STK_RB_RED;                                                    \
                     x = x->parent;                                                            \
                 } else {                                                                      \
-                    if (w->right->color == STK_RB_BLACK) {                                        \
-                        w->left->color = STK_RB_BLACK;                                            \
-                        w->color = STK_RB_RED;                                                    \
+                    if (w->right->color == STK_RB_BLACK) {                                    \
+                        w->left->color = STK_RB_BLACK;                                        \
+                        w->color = STK_RB_RED;                                                \
                         stk_rbtree_##name##_right_rotate(t, w);                               \
                         w = x->parent->right;                                                 \
                     }                                                                         \
                     w->color = x->parent->color;                                              \
-                    x->parent->color = STK_RB_BLACK;                                              \
-                    w->right->color = STK_RB_BLACK;                                               \
+                    x->parent->color = STK_RB_BLACK;                                          \
+                    w->right->color = STK_RB_BLACK;                                           \
                     stk_rbtree_##name##_left_rotate(t, x->parent);                            \
                     x = t->root;                                                              \
                 }                                                                             \
             } else {                                                                          \
                 stk_rbnode_##name* w = x->parent->left;                                       \
-                if (w->color == STK_RB_RED) {                                                     \
-                    w->color = STK_RB_BLACK;                                                      \
-                    x->parent->color = STK_RB_RED;                                                \
+                if (w->color == STK_RB_RED) {                                                 \
+                    w->color = STK_RB_BLACK;                                                  \
+                    x->parent->color = STK_RB_RED;                                            \
                     stk_rbtree_##name##_right_rotate(t, x->parent);                           \
                     w = x->parent->left;                                                      \
                 }                                                                             \
-                if (w->right->color == STK_RB_BLACK && w->left->color == STK_RB_BLACK) {              \
-                    w->color = STK_RB_RED;                                                        \
+                if (w->right->color == STK_RB_BLACK && w->left->color == STK_RB_BLACK) {      \
+                    w->color = STK_RB_RED;                                                    \
                     x = x->parent;                                                            \
                 } else {                                                                      \
-                    if (w->left->color == STK_RB_BLACK) {                                         \
-                        w->right->color = STK_RB_BLACK;                                           \
-                        w->color = STK_RB_RED;                                                    \
+                    if (w->left->color == STK_RB_BLACK) {                                     \
+                        w->right->color = STK_RB_BLACK;                                       \
+                        w->color = STK_RB_RED;                                                \
                         stk_rbtree_##name##_left_rotate(t, w);                                \
                         w = x->parent->left;                                                  \
                     }                                                                         \
                     w->color = x->parent->color;                                              \
-                    x->parent->color = STK_RB_BLACK;                                              \
-                    w->left->color = STK_RB_BLACK;                                                \
+                    x->parent->color = STK_RB_BLACK;                                          \
+                    w->left->color = STK_RB_BLACK;                                            \
                     stk_rbtree_##name##_right_rotate(t, x->parent);                           \
                     x = t->root;                                                              \
                 }                                                                             \
             }                                                                                 \
         }                                                                                     \
-        x->color = STK_RB_BLACK;                                                                  \
+        x->color = STK_RB_BLACK;                                                              \
     }                                                                                         \
                                                                                               \
     static void stk_rbtree_##name##_destroy_nodes(stk_rbtree_##name* t, stk_rbnode_##name* n) \
@@ -668,7 +667,7 @@
     void stk_rbtree_##name##_init(stk_rbtree_##name* t)                                       \
     {                                                                                         \
         t->nil = (stk_rbnode_##name*)malloc(sizeof(stk_rbnode_##name));                       \
-        t->nil->color = STK_RB_BLACK;                                                             \
+        t->nil->color = STK_RB_BLACK;                                                         \
         t->nil->left = t->nil->right = t->nil->parent = t->nil;                               \
         t->root = t->nil;                                                                     \
         t->size = 0;                                                                          \
@@ -750,7 +749,7 @@
             y->color = z->color;                                                              \
         }                                                                                     \
                                                                                               \
-        if (y_orig_color == STK_RB_BLACK)                                                         \
+        if (y_orig_color == STK_RB_BLACK)                                                     \
             stk_rbtree_##name##_delete_fixup(t, x);                                           \
         free(z);                                                                              \
         t->size--;                                                                            \

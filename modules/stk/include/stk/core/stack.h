@@ -1,7 +1,8 @@
 #ifndef STK_CORE_STACK_H
 #define STK_CORE_STACK_H
 
-
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,16 +10,16 @@ extern "C" {
 
 /* =========================================================================
  * 动态栈 (LIFO)
- * 
+ *
  * 基于动态数组实现的栈，支持自动扩容。
  * 存储 void* 类型，可存放任意数据指针。
- * 
+ *
  * 时间复杂度:
  *   - push:    O(1) 均摊
  *   - pop:     O(1)
  *   - top:     O(1)
  *   - reserve: O(n)
- * 
+ *
  * Basic usage:
  * @code
  *   stk_stack s;
@@ -31,9 +32,9 @@ extern "C" {
  * ========================================================================= */
 
 typedef struct {
-    void** data;       /* 元素数组 */
-    size_t size;       /* 当前元素数量 */
-    size_t capacity;   /* 当前容量 */
+    void** data;     /* 元素数组 */
+    size_t size;     /* 当前元素数量 */
+    size_t capacity; /* 当前容量 */
 } stk_stack;
 
 /* =========================================================================

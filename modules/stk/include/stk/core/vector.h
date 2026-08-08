@@ -3,6 +3,8 @@
 #ifndef STK_CORE_VECTOR_H
 #define STK_CORE_VECTOR_H
 
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,14 +26,14 @@ STK_API STK_STATUS stk_vector_free(stk_vector* v);
 
 STK_API STK_STATUS stk_vector_push(stk_vector* v, void* val);
 STK_API STK_STATUS stk_vector_pop(stk_vector* v);
-STK_API void*      stk_vector_get(stk_vector* v, size_t idx);
-STK_API void**     stk_vector_at(stk_vector* v, size_t idx);
+STK_API void* stk_vector_get(stk_vector* v, size_t idx);
+STK_API void** stk_vector_at(stk_vector* v, size_t idx);
 STK_API STK_STATUS stk_vector_set(stk_vector* v, size_t idx, void* val);
 
 /* Introspection -------------------------------------------------------- */
 
 STK_API size_t stk_vector_len(const stk_vector* v);
-STK_API bool   stk_vector_empty(const stk_vector* v);
+STK_API bool stk_vector_empty(const stk_vector* v);
 STK_API size_t stk_vector_cap(const stk_vector* v);
 
 /* Management ----------------------------------------------------------- */

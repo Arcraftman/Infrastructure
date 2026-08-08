@@ -1,7 +1,9 @@
 #ifndef STK_CORE_SET_H
 #define STK_CORE_SET_H
 
-
+#include "stk/core/hashmap.h"
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,15 +11,15 @@ extern "C" {
 
 /* =========================================================================
  * 集合 (Set)
- * 
+ *
  * 基于哈希表实现，存储唯一值。
  * 存储 void* 类型，可存放任意数据指针。
- * 
+ *
  * 时间复杂度:
  *   - insert:   O(1) 均摊
  *   - remove:   O(1) 均摊
  *   - contains: O(1) 均摊
- * 
+ *
  * Basic usage:
  * @code
  *   stk_set set;
@@ -31,27 +33,25 @@ extern "C" {
 
 /* 集合结构（基于哈希表） */
 typedef struct {
-    stk_hashmap map;   /* 底层使用哈希表，值存储为 NULL */
+    stk_hashmap map; /* 底层使用哈希表，值存储为 NULL */
 } stk_set;
 
 /* 默认哈希/相等函数（用于 C 字符串键） */
 STK_API uint64_t stk_set_str_hash(const void* key);
-STK_API bool     stk_set_str_eq(const void* a, const void* b);
+STK_API bool stk_set_str_eq(const void* a, const void* b);
 
 /* =========================================================================
  * 生命周期管理
  * ========================================================================= */
 
 /* 初始化空集合 */
-STK_API STK_STATUS stk_set_init(stk_set* set,
-                                 stk_hashmap_hash_fn hash_fn,
-                                 stk_hashmap_eq_fn eq_fn);
+STK_API STK_STATUS stk_set_init(stk_set* set, stk_hashmap_hash_fn hash_fn, stk_hashmap_eq_fn eq_fn);
 
 /* 初始化并预分配容量 */
 STK_API STK_STATUS stk_set_init_with_capacity(stk_set* set,
-                                               size_t initial_capacity,
-                                               stk_hashmap_hash_fn hash_fn,
-                                               stk_hashmap_eq_fn eq_fn);
+                                              size_t initial_capacity,
+                                              stk_hashmap_hash_fn hash_fn,
+                                              stk_hashmap_eq_fn eq_fn);
 
 /* 释放集合内存 */
 STK_API STK_STATUS stk_set_free(stk_set* set);
@@ -110,8 +110,8 @@ STK_API bool stk_set_empty(const stk_set* set);
 
 /* 遍历集合，对每个元素执行函数（返回 false 停止遍历） */
 STK_API STK_STATUS stk_set_foreach(const stk_set* set,
-                                     bool (*fn)(void* value, void* user_data),
-                                     void* user_data);
+                                   bool (*fn)(void* value, void* user_data),
+                                   void* user_data);
 
 /* 转换为数组 */
 STK_API void** stk_set_to_array(const stk_set* set);

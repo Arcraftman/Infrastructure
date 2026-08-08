@@ -19,8 +19,9 @@
 # 防止重复包含
 if(DEFINED INFRA_VERSION_INCLUDED)
     return()
+else()
+    set(INFRA_VERSION_INCLUDED TRUE)
 endif()
-set(INFRA_VERSION_INCLUDED TRUE)
 
 # 获取 Git 描述信息
 macro(infra_git_describe VAR_NAME PATH)
@@ -36,9 +37,13 @@ macro(infra_git_describe VAR_NAME PATH)
         )
         if(NOT GIT_RESULT EQUAL 0)
             set(${VAR_NAME} "unknown")
+            infra_debug("git describe failed, using 'unknown'")
+        else()
+            infra_debug("git describe result: ${${VAR_NAME}}")
         endif()
     else()
         set(${VAR_NAME} "unknown")
+        infra_debug("Git not found, using 'unknown'")
     endif()
 endmacro()
 
@@ -49,15 +54,18 @@ function(infra_generate_version OUTPUT_PATH)
     if(INFRA_GIT_VERSION STREQUAL "unknown")
         # Git 失败，使用项目版本
         set(INFRA_VERSION_STRING "${PROJECT_VERSION}")
+        infra_debug("Using project version: ${PROJECT_VERSION}")
     else()
         # 使用 Git 描述的版本
         set(INFRA_VERSION_STRING "${INFRA_GIT_VERSION}")
+        infra_debug("Using Git version: ${INFRA_GIT_VERSION}")
     endif()
 
     # 从 PROJECT_VERSION 解析版本组件
     set(INFRA_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
     set(INFRA_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
     set(INFRA_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+    infra_debug("Version components: ${INFRA_VERSION_MAJOR}.${INFRA_VERSION_MINOR}.${INFRA_VERSION_PATCH}")
 
     # 将版本字符串传播到调用者作用域
     set(INFRA_VERSION_STRING "${INFRA_VERSION_STRING}" PARENT_SCOPE)
@@ -76,4 +84,5 @@ function(infra_generate_version OUTPUT_PATH)
         "#endif /* INFRA_VERSION_H */\n"
     )
     message(STATUS "Generated version header: ${OUTPUT_PATH}")
+    infra_debug("Version header written to: ${OUTPUT_PATH}")
 endfunction()

@@ -1,6 +1,14 @@
 #ifndef STK_CORE_H
 #define STK_CORE_H
 
+#ifdef __cplusplus
+
+#include "stk/core/cpp/rbtree.hpp"
+#include "stk/core/cpp/string.hpp"
+#include "stk/core/cpp/vector.hpp"
+
+#else
+
 #include "stk/core/arena.h"
 #include "stk/core/bitset.h"
 #include "stk/core/buffer.h"
@@ -17,5 +25,7 @@
 #include "stk/core/str.h"
 #include "stk/core/uf.h"
 #include "stk/core/vector.h"
+
+#endif
 
 #endif

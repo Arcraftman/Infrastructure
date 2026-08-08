@@ -175,6 +175,22 @@ if(INFRA_STK_ENABLE_CORE)
 endif()
 
 # ============================================================================
+# C++ 模板组件 (仅当 INFRA_STK_ENABLE_CXX=ON 时编译)
+# ============================================================================
+# stk 的 C++ 部分（vector/string/rbtree 模板）默认不编译，因为模块主体为 C。
+# 开启后通过 cpp_stub.cpp 显式实例化模板，确保模板可被编译器接受。
+if(INFRA_STK_ENABLE_CXX)
+    set(CPP_SOURCES
+        ${INFRA_MODULE_STK_SRC_DIR}/core/cpp_stub.cpp
+    )
+    infra_register_component(stk cpp
+        SOURCES ${CPP_SOURCES}
+        PRIVATE_DIRS ${INFRA_MODULE_STK_INC_DIR}
+    )
+    infra_info("stk C++ templates enabled (INFRA_STK_ENABLE_CXX=ON)")
+endif()
+
+# ============================================================================
 # 工具组件 (Utils Component)
 # ============================================================================
 # 提供日志、辅助函数等实用工具
@@ -206,6 +222,11 @@ infra_finalize_module(stk)
 # 测试子目录
 # ----------------------------------------------------------------------------
 # 如果需要构建测试，包含 tests 子目录
-if(INFRA_BUILD_TESTS)
+if(INFRA_BUILD_TESTS AND EXISTS "${INFRA_MODULE_STK_ROOT_DIR}/tests/CMakeLists.txt")
     add_subdirectory(tests)
+endif()
+
+set(STK_EXAMPLES_CMAKE "${INFRA_MODULE_STK_ROOT_DIR}/examples/CMakeLists.txt")
+if(INFRA_BUILD_EXAMPLES AND EXISTS "${STK_EXAMPLES_CMAKE}")
+    add_subdirectory("${INFRA_MODULE_STK_ROOT_DIR}/examples" "${CMAKE_CURRENT_BINARY_DIR}/examples")
 endif()

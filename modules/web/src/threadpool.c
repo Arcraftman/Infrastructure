@@ -10,30 +10,29 @@
  * ========================================================================= */
 
 typedef struct task_node {
-    web_task_fn  fn;
-    void        *arg;
-    struct task_node *next;
+    web_task_fn fn;
+    void* arg;
+    struct task_node* next;
 } task_node_t;
 
 struct web_threadpool {
-    pthread_t      *threads;
-    int             thread_count;
-    task_node_t    *queue_head;
-    task_node_t    *queue_tail;
-    int             queue_size;
+    pthread_t* threads;
+    int thread_count;
+    task_node_t* queue_head;
+    task_node_t* queue_tail;
+    int queue_size;
     pthread_mutex_t lock;
-    pthread_cond_t  signal;
-    volatile int    running;
+    pthread_cond_t signal;
+    volatile int running;
 };
 
 /* =========================================================================
  * Worker routine — pull tasks from the queue and execute them
  * ========================================================================= */
 
-static void *
-worker_routine(void *arg)
+static void* worker_routine(void* arg)
 {
-    web_threadpool_t *pool = (web_threadpool_t *)arg;
+    web_threadpool_t* pool = (web_threadpool_t*)arg;
 
     while (1) {
         pthread_mutex_lock(&pool->lock);
@@ -46,7 +45,7 @@ worker_routine(void *arg)
         }
 
         /* Dequeue */
-        task_node_t *task = pool->queue_head;
+        task_node_t* task = pool->queue_head;
         pool->queue_head = task->next;
         if (!pool->queue_head)
             pool->queue_tail = NULL;
@@ -62,19 +61,19 @@ worker_routine(void *arg)
  * Public API
  * ========================================================================= */
 
-WEB_API web_threadpool_t *
-web_threadpool_create(int thread_count)
+WEB_API web_threadpool_t* web_threadpool_create(int thread_count)
 {
     if (thread_count < 1) {
         errno = EINVAL;
         return NULL;
     }
 
-    web_threadpool_t *pool = (web_threadpool_t *)calloc(1, sizeof(*pool));
-    if (!pool) return NULL;
+    web_threadpool_t* pool = (web_threadpool_t*)calloc(1, sizeof(*pool));
+    if (!pool)
+        return NULL;
 
     pool->thread_count = thread_count;
-    pool->running      = 1;
+    pool->running = 1;
 
     if (pthread_mutex_init(&pool->lock, NULL) != 0) {
         free(pool);
@@ -86,7 +85,7 @@ web_threadpool_create(int thread_count)
         return NULL;
     }
 
-    pool->threads = (pthread_t *)calloc((size_t)thread_count, sizeof(pthread_t));
+    pool->threads = (pthread_t*)calloc((size_t)thread_count, sizeof(pthread_t));
     if (!pool->threads) {
         pthread_cond_destroy(&pool->signal);
         pthread_mutex_destroy(&pool->lock);
@@ -112,16 +111,17 @@ web_threadpool_create(int thread_count)
     return pool;
 }
 
-WEB_API int
-web_threadpool_dispatch(web_threadpool_t *pool, web_task_fn fn, void *arg)
+WEB_API int web_threadpool_dispatch(web_threadpool_t* pool, web_task_fn fn, void* arg)
 {
-    if (!pool || !fn) return -1;
+    if (!pool || !fn)
+        return -1;
 
-    task_node_t *task = (task_node_t *)malloc(sizeof(*task));
-    if (!task) return -1;
+    task_node_t* task = (task_node_t*)malloc(sizeof(*task));
+    if (!task)
+        return -1;
 
-    task->fn   = fn;
-    task->arg  = arg;
+    task->fn = fn;
+    task->arg = arg;
     task->next = NULL;
 
     pthread_mutex_lock(&pool->lock);
@@ -145,27 +145,26 @@ web_threadpool_dispatch(web_threadpool_t *pool, web_task_fn fn, void *arg)
     return 0;
 }
 
-WEB_API int
-web_threadpool_count(const web_threadpool_t *pool)
+WEB_API int web_threadpool_count(const web_threadpool_t* pool)
 {
     return pool ? pool->thread_count : 0;
 }
 
-WEB_API int
-web_threadpool_queued(const web_threadpool_t *pool)
+WEB_API int web_threadpool_queued(const web_threadpool_t* pool)
 {
-    if (!pool) return 0;
+    if (!pool)
+        return 0;
     int sz;
-    pthread_mutex_lock(&((web_threadpool_t *)pool)->lock);
+    pthread_mutex_lock(&((web_threadpool_t*)pool)->lock);
     sz = pool->queue_size;
-    pthread_mutex_unlock(&((web_threadpool_t *)pool)->lock);
+    pthread_mutex_unlock(&((web_threadpool_t*)pool)->lock);
     return sz;
 }
 
-WEB_API void
-web_threadpool_destroy(web_threadpool_t *pool)
+WEB_API void web_threadpool_destroy(web_threadpool_t* pool)
 {
-    if (!pool) return;
+    if (!pool)
+        return;
 
     pthread_mutex_lock(&pool->lock);
     pool->running = 0;
@@ -176,9 +175,9 @@ web_threadpool_destroy(web_threadpool_t *pool)
         pthread_join(pool->threads[i], NULL);
 
     /* Drain any remaining tasks */
-    task_node_t *t = pool->queue_head;
+    task_node_t* t = pool->queue_head;
     while (t) {
-        task_node_t *next = t->next;
+        task_node_t* next = t->next;
         free(t);
         t = next;
     }

@@ -19,7 +19,7 @@ extern "C" {
  * Call order:  M1 → M2 → ... → Mn → handler → Mn_out → ... → M1_out
  */
 
-typedef struct web_middleware     web_middleware_t;
+typedef struct web_middleware web_middleware_t;
 typedef struct web_middleware_ctx web_middleware_ctx_t;
 
 /**
@@ -31,18 +31,17 @@ typedef struct web_middleware_ctx web_middleware_ctx_t;
  * To pass to the next middleware/handler, return NULL.
  * To short-circuit, return a web_response_t (caller will send it).
  */
-typedef web_response_t *(*web_middleware_fn)(const web_request_t *req,
-                                              web_middleware_ctx_t *ctx,
-                                              void *userdata);
+typedef web_response_t* (*web_middleware_fn)(const web_request_t* req,
+                                             web_middleware_ctx_t* ctx,
+                                             void* userdata);
 
 /** Destructor for middleware userdata. */
-typedef void (*web_middleware_dtor_fn)(void *userdata);
+typedef void (*web_middleware_dtor_fn)(void* userdata);
 
 /**
  * Create a middleware pipeline.
  */
-WEB_API web_middleware_t *
-web_middleware_create(void);
+WEB_API web_middleware_t* web_middleware_create(void);
 
 /**
  * Append a middleware to the chain.
@@ -53,9 +52,10 @@ web_middleware_create(void);
  * @param dtor    Destructor for userdata (may be NULL).
  * @return 0 on success, -1 on error.
  */
-WEB_API int
-web_middleware_use(web_middleware_t *mw, web_middleware_fn fn,
-                   void *userdata, web_middleware_dtor_fn dtor);
+WEB_API int web_middleware_use(web_middleware_t* mw,
+                               web_middleware_fn fn,
+                               void* userdata,
+                               web_middleware_dtor_fn dtor);
 
 /**
  * Set a key-value pair on the middleware context.
@@ -66,22 +66,18 @@ web_middleware_use(web_middleware_t *mw, web_middleware_fn fn,
  * @param value Value pointer (not copied, stored as-is).
  * @return 0 on success, -1 on error.
  */
-WEB_API int
-web_middleware_ctx_set(web_middleware_ctx_t *ctx,
-                       const char *key, void *value);
+WEB_API int web_middleware_ctx_set(web_middleware_ctx_t* ctx, const char* key, void* value);
 
 /**
  * Get a value from the middleware context by key.
  * @return The stored value, or NULL if not found.
  */
-WEB_API void *
-web_middleware_ctx_get(const web_middleware_ctx_t *ctx, const char *key);
+WEB_API void* web_middleware_ctx_get(const web_middleware_ctx_t* ctx, const char* key);
 
 /**
  * Destroy middleware pipeline and all registered middleware.
  */
-WEB_API void
-web_middleware_destroy(web_middleware_t *mw);
+WEB_API void web_middleware_destroy(web_middleware_t* mw);
 
 #ifdef __cplusplus
 }

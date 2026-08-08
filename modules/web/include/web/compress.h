@@ -17,9 +17,9 @@ extern "C" {
 
 /** Supported compression algorithms. */
 typedef enum web_compress_algo {
-    WEB_COMPRESS_NONE    = 0, /**< No compression (passthrough). */
-    WEB_COMPRESS_GZIP    = 1, /**< gzip format (RFC 1952). */
-    WEB_COMPRESS_DEFLATE = 2  /**< raw deflate (RFC 1951). */
+    WEB_COMPRESS_NONE = 0,   /**< No compression (passthrough). */
+    WEB_COMPRESS_GZIP = 1,   /**< gzip format (RFC 1952). */
+    WEB_COMPRESS_DEFLATE = 2 /**< raw deflate (RFC 1951). */
 } web_compress_algo_t;
 
 /**
@@ -27,8 +27,7 @@ typedef enum web_compress_algo {
  * @param accept_encoding  Value of the Accept-Encoding request header.
  * @return The preferred algorithm, or WEB_COMPRESS_NONE if no match.
  */
-WEB_API web_compress_algo_t
-web_compress_negotiate(const char *accept_encoding);
+WEB_API web_compress_algo_t web_compress_negotiate(const char* accept_encoding);
 
 /**
  * Compress a buffer using the given algorithm.
@@ -40,16 +39,13 @@ web_compress_negotiate(const char *accept_encoding);
  * @return 0 on success, -1 on error.
  */
 WEB_API int
-web_compress(web_compress_algo_t algo,
-             const void *in, size_t in_len,
-             void **out, size_t *out_len);
+web_compress(web_compress_algo_t algo, const void* in, size_t in_len, void** out, size_t* out_len);
 
 /**
  * Name string for a compression algorithm ("gzip", "deflate").
  * Returns NULL for WEB_COMPRESS_NONE.
  */
-WEB_API const char *
-web_compress_name(web_compress_algo_t algo);
+WEB_API const char* web_compress_name(web_compress_algo_t algo);
 
 /**
  * Compress a response body in-place.
@@ -59,8 +55,7 @@ web_compress_name(web_compress_algo_t algo);
  * @param resp Response to compress.
  * @return 0 on success, -1 on error.
  */
-WEB_API int
-web_response_compress(web_compress_algo_t algo, web_response_t *resp);
+WEB_API int web_response_compress(web_compress_algo_t algo, web_response_t* resp);
 
 #ifdef __cplusplus
 }

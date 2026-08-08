@@ -18,8 +18,9 @@
 # 防止重复包含
 if(DEFINED INFRA_DOC_INCLUDED)
     return()
+else()
+    set(INFRA_DOC_INCLUDED TRUE)
 endif()
-set(INFRA_DOC_INCLUDED TRUE)
 
 # 文档构建选项
 option(INFRA_BUILD_DOCS "Build documentation" OFF)
@@ -39,40 +40,46 @@ endfunction()
 # 配置 Doxygen
 function(infra_setup_doxygen)
     if(NOT INFRA_BUILD_DOCS)
+        infra_debug("Doxygen setup skipped (INFRA_BUILD_DOCS is OFF)")
         return()
     endif()
     
     infra_find_doxygen()
     
     if(NOT DOXYGEN_FOUND)
+        infra_debug("Doxygen not found, skipping setup")
         return()
     endif()
     
-    # Doxygen 配置变量
-    set(DOXYGEN_INPUT ${INFRA_INCLUDE_DIR})
-    set(DOXYGEN_OUTPUT_DIR ${CMAKE_BINARY_DIR}/docs/html)
+    # Doxygen 配置变量；统一使用 Infra 源码根目录，避免被调用上下文改变。
+    set(DOXYGEN_INPUT "${PROJECT_SOURCE_DIR}/modules")
+    set(DOXYGEN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/docs/html")
     
-    set(DOXYGEN_PROJECT_NAME ${PROJECT_NAME})
-    set(DOXYGEN_PROJECT_NUMBER ${INFRA_VERSION_STRING})
+    set(DOXYGEN_PROJECT_NAME "${PROJECT_NAME}")
+    set(DOXYGEN_PROJECT_NUMBER "${INFRA_VERSION_STRING}")
     set(DOXYGEN_RECURSIVE YES)
     set(DOXYGEN_GENERATE_LATEX NO)
     set(DOXYGEN_GENERATE_TREEVIEW YES)
     set(DOXYGEN_USE_MATHJAX YES)
     
     # 如果存在 Doxyfile.in 模板，使用它
-    if(EXISTS ${CMAKE_SOURCE_DIR}/docs/Doxyfile.in)
-        configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
+    set(INFRA_DOXYFILE_IN "${PROJECT_SOURCE_DIR}/docs/Doxyfile.in")
+    set(INFRA_DOXYFILE_OUT "${CMAKE_BINARY_DIR}/Doxyfile")
+    if(EXISTS "${INFRA_DOXYFILE_IN}")
+        configure_file("${INFRA_DOXYFILE_IN}" "${INFRA_DOXYFILE_OUT}" @ONLY)
         add_custom_target(doxygen-docs
-            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
+            COMMAND ${DOXYGEN_EXECUTABLE} "${INFRA_DOXYFILE_OUT}"
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             COMMENT "Generate API documentation with Doxygen"
         )
+        infra_debug("Generated Doxyfile from template")
     else()
         doxygen_add_docs(doxygen-docs
             ${DOXYGEN_INPUT}
             COMMENT "Generate API documentation with Doxygen"
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         )
+        infra_debug("Using default doxygen_add_docs")
     endif()
     
     # 创建 docs 主目标，依赖 doxygen-docs
@@ -84,6 +91,9 @@ function(infra_setup_doxygen)
             DESTINATION share/doc/${PROJECT_NAME}/html
             COMPONENT documentation
         )
+        infra_debug("Added install rule for Doxygen docs")
+    else()
+        infra_debug("Doxygen docs installation skipped")
     endif()
     
     infra_success("Doxygen documentation configured")
@@ -92,6 +102,7 @@ endfunction()
 # 配置 Sphinx
 function(infra_setup_sphinx)
     if(NOT INFRA_BUILD_DOCS)
+        infra_debug("Sphinx setup skipped (INFRA_BUILD_DOCS is OFF)")
         return()
     endif()
     
@@ -116,6 +127,9 @@ function(infra_setup_sphinx)
         # 将 sphinx-docs 添加为 docs 目标的依赖
         add_dependencies(docs sphinx-docs)
         infra_success("Sphinx documentation configured")
+        infra_debug("Sphinx source: ${SPHINX_SOURCE_DIR}, output: ${SPHINX_OUTPUT_DIR}")
+    else()
+        infra_debug("Sphinx conf.py not found at ${SPHINX_SOURCE_DIR}/conf.py")
     endif()
 endfunction()
 
@@ -126,10 +140,13 @@ function(infra_setup_documentation)
         return()
     endif()
     
-    # 创建 docs 目标
-    add_custom_target(docs)
+    # 由 Doxygen/Sphinx 子函数按需创建 docs 目标。
+    # 不在这里预先创建，避免与 doxygen-docs 依赖目标重复。
+    infra_debug("Documentation target will be created by available generators")
+    
     # 配置 Doxygen
     infra_setup_doxygen()
+    
     # 配置 Sphinx
     infra_setup_sphinx()
     

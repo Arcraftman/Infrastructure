@@ -1,7 +1,8 @@
 #ifndef STK_CORE_SLIST_H
 #define STK_CORE_SLIST_H
 
-
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,10 +10,10 @@ extern "C" {
 
 /* =========================================================================
  * 单向链表 (Singly Linked List)
- * 
+ *
  * 每个节点只指向下一个节点，不能反向遍历。
  * 存储 void* 类型，可存放任意数据指针。
- * 
+ *
  * 时间复杂度:
  *   - push_front:  O(1)
  *   - pop_front:   O(1)
@@ -21,10 +22,10 @@ extern "C" {
  *   - insert:      O(n)
  *   - erase:       O(n)
  *   - find:        O(n)
- * 
+ *
  * 优点: 实现简单，内存占用少（比双向链表少一个指针）
  * 缺点: 无法反向遍历，删除尾部需要遍历
- * 
+ *
  * Basic usage:
  * @code
  *   stk_slist list;
@@ -38,15 +39,15 @@ extern "C" {
 
 /* 单向链表节点 */
 typedef struct stk_snode {
-    void* data;                 /* 存储的数据 */
-    struct stk_snode* next;     /* 指向下一个节点 */
+    void* data;             /* 存储的数据 */
+    struct stk_snode* next; /* 指向下一个节点 */
 } stk_snode;
 
 /* 单向链表结构 */
 typedef struct {
-    stk_snode* head;            /* 头节点指针 */
-    stk_snode* tail;            /* 尾节点指针（可选，用于快速尾部操作） */
-    size_t size;                /* 节点数量 */
+    stk_snode* head; /* 头节点指针 */
+    stk_snode* tail; /* 尾节点指针（可选，用于快速尾部操作） */
+    size_t size;     /* 节点数量 */
 } stk_slist;
 
 /* =========================================================================
@@ -115,12 +116,14 @@ STK_API STK_STATUS stk_slist_erase(stk_slist* list, size_t index);
  * ========================================================================= */
 
 /* 查找第一个匹配值的节点索引，未找到返回 (size_t)-1 */
-STK_API size_t stk_slist_find(const stk_slist* list, const void* value, 
-                               bool (*equal)(const void* a, const void* b));
+STK_API size_t stk_slist_find(const stk_slist* list,
+                              const void* value,
+                              bool (*equal)(const void* a, const void* b));
 
 /* 检查链表是否包含某个值 */
-STK_API bool stk_slist_contains(const stk_slist* list, const void* value,
-                                 bool (*equal)(const void* a, const void* b));
+STK_API bool stk_slist_contains(const stk_slist* list,
+                                const void* value,
+                                bool (*equal)(const void* a, const void* b));
 
 /* =========================================================================
  * 查询接口
@@ -153,14 +156,14 @@ STK_API STK_STATUS stk_slist_swap(stk_slist* a, stk_slist* b);
  * ========================================================================= */
 
 /* 遍历链表，对每个元素执行函数（返回 false 停止遍历） */
-STK_API STK_STATUS stk_slist_foreach(const stk_slist* list, 
-                                      bool (*fn)(void* data, void* user_data),
-                                      void* user_data);
+STK_API STK_STATUS stk_slist_foreach(const stk_slist* list,
+                                     bool (*fn)(void* data, void* user_data),
+                                     void* user_data);
 
 /* 遍历链表（可修改），对每个元素执行函数 */
 STK_API STK_STATUS stk_slist_foreach_mut(stk_slist* list,
-                                          bool (*fn)(void** data, void* user_data),
-                                          void* user_data);
+                                         bool (*fn)(void** data, void* user_data),
+                                         void* user_data);
 
 /* =========================================================================
  * 高级操作
@@ -170,8 +173,9 @@ STK_API STK_STATUS stk_slist_foreach_mut(stk_slist* list,
 STK_API STK_STATUS stk_slist_merge(stk_slist* dst, stk_slist* src);
 
 /* 移除所有匹配的值 */
-STK_API size_t stk_slist_remove_all(stk_slist* list, const void* value,
-                                     bool (*equal)(const void* a, const void* b));
+STK_API size_t stk_slist_remove_all(stk_slist* list,
+                                    const void* value,
+                                    bool (*equal)(const void* a, const void* b));
 
 /* 获取节点地址（用于高级操作） */
 STK_API stk_snode* stk_slist_node_at(const stk_slist* list, size_t index);

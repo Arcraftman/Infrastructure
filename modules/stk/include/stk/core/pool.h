@@ -1,7 +1,8 @@
 #ifndef STK_CORE_POOL_H
 #define STK_CORE_POOL_H
 
-
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,37 +29,37 @@ extern "C" {
  */
 
 typedef struct stk_pool_slab {
-    struct stk_pool_slab *next;
+    struct stk_pool_slab* next;
 } stk_pool_slab;
 
 typedef struct stk_pool_free_node {
-    struct stk_pool_free_node *next;
+    struct stk_pool_free_node* next;
 } stk_pool_free_node;
 
 typedef struct {
-    size_t              element_size;   /* per-element size (padded to alignment) */
-    size_t              slab_capacity;  /* elements per slab */
-    stk_pool_slab      *slabs;          /* linked list of all slabs */
-    stk_pool_free_node *freelist;       /* singly-linked freelist of freed nodes */
-    size_t              allocated;      /* number of elements currently in use */
-    size_t              total;          /* total elements available */
+    size_t element_size;          /* per-element size (padded to alignment) */
+    size_t slab_capacity;         /* elements per slab */
+    stk_pool_slab* slabs;         /* linked list of all slabs */
+    stk_pool_free_node* freelist; /* singly-linked freelist of freed nodes */
+    size_t allocated;             /* number of elements currently in use */
+    size_t total;                 /* total elements available */
 } stk_pool;
 
 /* Lifetime ------------------------------------------------------------- */
 
-STK_API STK_STATUS stk_pool_init(stk_pool *p, size_t element_size, size_t slab_capacity);
-STK_API STK_STATUS stk_pool_destroy(stk_pool *p);
+STK_API STK_STATUS stk_pool_init(stk_pool* p, size_t element_size, size_t slab_capacity);
+STK_API STK_STATUS stk_pool_destroy(stk_pool* p);
 
 /* Allocation / deallocation -------------------------------------------- */
 
-STK_API void  *stk_pool_alloc(stk_pool *p);
-STK_API STK_STATUS stk_pool_free(stk_pool *p, void *element);
+STK_API void* stk_pool_alloc(stk_pool* p);
+STK_API STK_STATUS stk_pool_free(stk_pool* p, void* element);
 
 /* Introspection -------------------------------------------------------- */
 
-STK_API size_t stk_pool_element_size(const stk_pool *p);
-STK_API size_t stk_pool_allocated(const stk_pool *p);
-STK_API size_t stk_pool_available(const stk_pool *p);
+STK_API size_t stk_pool_element_size(const stk_pool* p);
+STK_API size_t stk_pool_allocated(const stk_pool* p);
+STK_API size_t stk_pool_available(const stk_pool* p);
 
 #ifdef __cplusplus
 }

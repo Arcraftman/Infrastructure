@@ -24,8 +24,7 @@ typedef struct web_ratelimit web_ratelimit_t;
  * @param cleanup_interval  How often (seconds) to clean up stale entries (0 = 60).
  * @return New rate limiter, or NULL on error.
  */
-WEB_API web_ratelimit_t *
-web_ratelimit_create(double rate, int burst, int cleanup_interval);
+WEB_API web_ratelimit_t* web_ratelimit_create(double rate, int burst, int cleanup_interval);
 
 /**
  * Check if a request from the given client should be allowed.
@@ -33,26 +32,22 @@ web_ratelimit_create(double rate, int burst, int cleanup_interval);
  * @param client_key  Client identifier (e.g. IP address string).
  * @return 1 if allowed, 0 if rate-limited.
  */
-WEB_API int
-web_ratelimit_allow(web_ratelimit_t *rl, const char *client_key);
+WEB_API int web_ratelimit_allow(web_ratelimit_t* rl, const char* client_key);
 
 /**
  * Get the number of tracked clients.
  */
-WEB_API size_t
-web_ratelimit_count(const web_ratelimit_t *rl);
+WEB_API size_t web_ratelimit_count(const web_ratelimit_t* rl);
 
 /**
  * Reset the rate limiter for a specific client.
  */
-WEB_API void
-web_ratelimit_reset(web_ratelimit_t *rl, const char *client_key);
+WEB_API void web_ratelimit_reset(web_ratelimit_t* rl, const char* client_key);
 
 /**
  * Destroy the rate limiter.
  */
-WEB_API void
-web_ratelimit_destroy(web_ratelimit_t *rl);
+WEB_API void web_ratelimit_destroy(web_ratelimit_t* rl);
 
 #ifdef __cplusplus
 }

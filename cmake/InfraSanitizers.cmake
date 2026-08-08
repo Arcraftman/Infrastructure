@@ -19,8 +19,9 @@
 # 防止重复包含
 if(DEFINED INFRA_SANITIZERS_INCLUDED)
     return()
+else()
+    set(INFRA_SANITIZERS_INCLUDED TRUE)
 endif()
-set(INFRA_SANITIZERS_INCLUDED TRUE)
 
 # 包含编译测试模块
 include(CheckCXXSourceCompiles)
@@ -43,12 +44,19 @@ function(infra_check_sanitizer SANITIZER_NAME FLAG)
     
     set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
     set(INFRA_HAVE_${SANITIZER_NAME} PARENT_SCOPE)
+    
+    if(INFRA_HAVE_${SANITIZER_NAME})
+        infra_debug("Compiler supports ${SANITIZER_NAME} (${FLAG})")
+    else()
+        infra_debug("Compiler does not support ${SANITIZER_NAME} (${FLAG})")
+    endif()
 endfunction()
 
 # 为目标设置消毒剂
 function(infra_setup_sanitizers TARGET)
     # 如果未启用任何消毒剂，直接返回
     if(NOT INFRA_ENABLE_ASAN AND NOT INFRA_ENABLE_UBSAN AND NOT INFRA_ENABLE_TSAN AND NOT INFRA_ENABLE_MSAN)
+        infra_debug("No sanitizers enabled for ${TARGET}")
         return()
     endif()
     
@@ -106,5 +114,8 @@ function(infra_setup_sanitizers TARGET)
     if(SANITIZER_FLAGS)
         target_compile_options(${TARGET} PRIVATE ${SANITIZER_FLAGS})
         target_link_options(${TARGET} PRIVATE ${SANITIZER_FLAGS})
+        infra_debug("Applied sanitizer flags to ${TARGET}: ${SANITIZER_FLAGS}")
+    else()
+        infra_debug("No sanitizer flags to apply to ${TARGET}")
     endif()
 endfunction()

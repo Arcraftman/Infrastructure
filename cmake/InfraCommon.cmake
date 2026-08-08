@@ -11,29 +11,20 @@
 # 防止重复包含
 if(DEFINED INFRA_COMMON_INCLUDED)
     return()
-endif()
-set(INFRA_COMMON_INCLUDED TRUE)
-
-# ============================================================================
-# 终端输出颜色代码（如果支持）
-# ============================================================================
-
-# 非 Windows 且非 macOS 平台支持 ANSI 转义颜色
-if(NOT WIN32 AND NOT APPLE)
-    string(ASCII 27 _ESCAPE)                           # ESC 字符
-    set(_RESET "${_ESCAPE}[m")                         # 重置颜色
-    set(_BOLD_CYAN "${_ESCAPE}[1;36m")                 # 粗体青色
-    set(_BOLD_GREEN "${_ESCAPE}[1;32m")                # 粗体绿色
-    set(_BOLD_YELLOW "${_ESCAPE}[1;33m")               # 粗体黄色
-    set(_BOLD_RED "${_ESCAPE}[1;31m")                  # 粗体红色
 else()
-    # Windows 或 macOS 不支持颜色
-    set(_RESET "")
-    set(_BOLD_CYAN "")
-    set(_BOLD_GREEN "")
-    set(_BOLD_YELLOW "")
-    set(_BOLD_RED "")
+    set(INFRA_COMMON_INCLUDED TRUE)
 endif()
+
+# ============================================================================
+# 终端输出颜色代码
+# ============================================================================
+
+# 统一不使用 ANSI 颜色转义，保持终端输出纯净、可被日志系统稳定解析。
+set(_RESET "")
+set(_BOLD_CYAN "")
+set(_BOLD_GREEN "")
+set(_BOLD_YELLOW "")
+set(_BOLD_RED "")
 
 # ============================================================================
 # 统一消息系统
@@ -53,17 +44,20 @@ endif()
 #
 function(infra_message TYPE MESSAGE)
     if(TYPE STREQUAL "STATUS")
-        # 状态信息 - 青色前缀
+        # 状态信息
         message(STATUS "${_BOLD_CYAN}[Infra]${_RESET} ${MESSAGE}")
     elseif(TYPE STREQUAL "WARNING")
-        # 警告信息 - 黄色前缀
-        message(WARNING "${_BOLD_YELLOW}[Infra]${_RESET} ${MESSAGE}")
+        # 警告信息：用 STATUS 通道输出，避免 CMake 的 message(WARNING)
+        # 强制显示冗长的 Call Stack；同时用 "Warning:" 前缀明确语义。
+        message(STATUS "${_BOLD_CYAN}[Infra]${_RESET} Warning: ${MESSAGE}")
     elseif(TYPE STREQUAL "FATAL_ERROR")
         # 致命错误 - 红色前缀，停止配置
+        # 注：infra_fatal 已改为返回文本，由调用方 message(FATAL_ERROR) 触发。
         message(FATAL_ERROR "${_BOLD_RED}[Infra]${_RESET} ${MESSAGE}")
     else()
         # 未知类型，直接输出
         message("${MESSAGE}")
+        message(STATUS "${_BOLD_CYAN}[Infra]${_RESET} Warning: Unknown message type: ${TYPE}")
     endif()
 endfunction()
 
@@ -77,18 +71,27 @@ endfunction()
 
 # infra_warn(MESSAGE)
 #
-# 输出警告消息（WARNING 的简写）。
+# 输出警告消息（非致命提示，走 STATUS 通道以避免调用栈噪音）。
 #
 function(infra_warn MESSAGE)
-    infra_message(WARNING "${MESSAGE}")
+    # 直接使用 STATUS 通道输出警告文本，避免 CMake message(WARNING) 产生额外调用栈。
+    infra_message(STATUS "Warning: ${MESSAGE}")
 endfunction()
 
 # infra_fatal(MESSAGE)
 #
 # 输出致命错误并停止配置（FATAL_ERROR 的简写）。
 #
+# infra_fatal(MESSAGE)
+#
+# 返回带 [Infra] 前缀的致命错误文本，供调用方直接传给 message(FATAL_ERROR)。
+#
+# 注意：CMake 的 message(FATAL_ERROR) 行号永远落在 message() 语句物理所在
+# 的文件:行。为了让报错精确指向业务触发位置（如 InfraConfig.cmake:185），
+# 这里不自己调用 message()，而是把格式化文本写入 INFRA_FATAL_TEXT 变量，
+# 由调用方在自己的文件作用域内调用 message(FATAL_ERROR "${INFRA_FATAL_TEXT}")。
 function(infra_fatal MESSAGE)
-    infra_message(FATAL_ERROR "${MESSAGE}")
+    set(INFRA_FATAL_TEXT "${_BOLD_RED}[Infra]${_RESET} ${MESSAGE}" PARENT_SCOPE)
 endfunction()
 
 # infra_success(MESSAGE)
@@ -104,7 +107,7 @@ endfunction()
 # 输出视觉分隔线，提高可读性。
 #
 function(infra_separator)
-    message(STATUS "${_BOLD_CYAN}========================================${_RESET}")
+    message(STATUS "${_BOLD_CYAN}----------------------------------------${_RESET}")
 endfunction()
 
 # ============================================================================
@@ -127,9 +130,16 @@ function(_infra_check_required_args FUNCTION_NAME)
             # 参数未定义，标记为无效并报错
             set(INFRA_VALID FALSE PARENT_SCOPE)
             infra_fatal("${FUNCTION_NAME}() requires ${keyword} argument")
+            message(FATAL_ERROR "${INFRA_FATAL_TEXT}")
             return()
+        else()
+            # 参数已定义，继续检查
+            infra_debug("${FUNCTION_NAME}(): ${keyword} is defined")
         endif()
     endforeach()
+    
+    # 所有参数验证通过
+    infra_debug("${FUNCTION_NAME}(): All required arguments validated")
 endfunction()
 
 # ============================================================================
@@ -150,6 +160,12 @@ function(infra_setup_dirs)
     set(INFRA_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include" PARENT_SCOPE)
     set(INFRA_BUILD_DIR "${CMAKE_BINARY_DIR}" PARENT_SCOPE)
     set(INFRA_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" PARENT_SCOPE)
+    
+    if(EXISTS "${INFRA_INCLUDE_DIR}")
+        infra_debug("Include directory exists: ${INFRA_INCLUDE_DIR}")
+    else()
+        infra_debug("Include directory does not exist: ${INFRA_INCLUDE_DIR}")
+    endif()
 endfunction()
 
 # infra_set_output_dirs()
@@ -167,6 +183,11 @@ function(infra_set_output_dirs)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" PARENT_SCOPE)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" PARENT_SCOPE)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" PARENT_SCOPE)
+    
+    infra_debug("Output directories configured:")
+    infra_debug("  RUNTIME: ${CMAKE_BINARY_DIR}/bin")
+    infra_debug("  LIBRARY: ${CMAKE_BINARY_DIR}/lib")
+    infra_debug("  ARCHIVE: ${CMAKE_BINARY_DIR}/lib")
 endfunction()
 
 # ============================================================================
@@ -194,8 +215,13 @@ function(infra_write_if_different FILEPATH CONTENT)
         file(READ "${FILEPATH}" OLD_CONTENT)
         # 如果内容相同则跳过写入
         if("${OLD_CONTENT}" STREQUAL "${CONTENT}")
+            infra_debug("File unchanged, skipping: ${FILEPATH}")
             return()
+        else()
+            infra_debug("File changed, updating: ${FILEPATH}")
         endif()
+    else()
+        infra_debug("File does not exist, creating: ${FILEPATH}")
     endif()
     # 写入新内容
     file(WRITE "${FILEPATH}" "${CONTENT}")
@@ -217,9 +243,8 @@ endfunction()
 #   infra_print_config_header("Build Configuration")
 #
 function(infra_print_config_header TITLE)
-    infra_separator()
     message(STATUS "${_BOLD_CYAN}${TITLE}${_RESET}")
-    infra_separator()
+    message(STATUS "${_BOLD_CYAN}----------------------------------------${_RESET}")
 endfunction()
 
 # infra_print_config_value(NAME VALUE)
@@ -234,7 +259,11 @@ endfunction()
 #   infra_print_config_value("Compiler" "${CMAKE_CXX_COMPILER_ID}")
 #
 function(infra_print_config_value NAME VALUE)
-    message(STATUS "  ${NAME} : ${VALUE}")
+    if(VALUE)
+        message(STATUS "  ${NAME} : ${VALUE}")
+    else()
+        message(STATUS "  ${NAME} : OFF")
+    endif()
 endfunction()
 
 # ============================================================================
@@ -257,8 +286,11 @@ function(infra_require_cmake_version VERSION)
     if(CMAKE_VERSION VERSION_LESS "${VERSION}")
         # 版本不满足要求
         infra_fatal("CMake ${VERSION}+ required (found ${CMAKE_VERSION})")
+        message(FATAL_ERROR "${INFRA_FATAL_TEXT}")
+    else()
+        # 版本满足要求
+        infra_info("CMake ${CMAKE_VERSION} (>= ${VERSION}) ✓")
     endif()
-    infra_info("CMake ${CMAKE_VERSION} (>= ${VERSION}) ✓")
 endfunction()
 
 # ============================================================================
@@ -279,6 +311,12 @@ function(infra_normalize_target_name NAME OUTPUT_VAR)
     # 将非字母数字、点、下划线、连字符的字符替换为下划线
     string(REGEX REPLACE "[^a-zA-Z0-9_.-]" "_" NORMALIZED "${NAME}")
     set(${OUTPUT_VAR} "${NORMALIZED}" PARENT_SCOPE)
+    
+    if(NOT "${NAME}" STREQUAL "${NORMALIZED}")
+        infra_debug("Normalized target name: '${NAME}' -> '${NORMALIZED}'")
+    else()
+        infra_debug("Target name unchanged: '${NAME}'")
+    endif()
 endfunction()
 
 # ============================================================================
@@ -316,8 +354,10 @@ function(infra_get_platform_name OUTPUT_VAR)
         endif()
     else()
         set(PLATFORM "Unknown")
+        infra_warn("Unknown platform detected")
     endif()
     set(${OUTPUT_VAR} "${PLATFORM}" PARENT_SCOPE)
+    infra_debug("Platform detected: ${PLATFORM}")
 endfunction()
 
 # ============================================================================
@@ -342,6 +382,12 @@ function(infra_string_to_identifier STRING OUTPUT_VAR)
     # 如果以数字开头，添加前缀下划线
     string(REGEX REPLACE "^[0-9]" "_" IDENTIFIER "${IDENTIFIER}")
     set(${OUTPUT_VAR} "${IDENTIFIER}" PARENT_SCOPE)
+    
+    if(NOT "${STRING}" STREQUAL "${IDENTIFIER}")
+        infra_debug("Converted to identifier: '${STRING}' -> '${IDENTIFIER}'")
+    else()
+        infra_debug("String is already a valid identifier: '${STRING}'")
+    endif()
 endfunction()
 
 # ============================================================================
@@ -359,8 +405,10 @@ endfunction()
 function(infra_var_exists VARIABLE_NAME RESULT_VAR)
     if(DEFINED ${VARIABLE_NAME})
         set(${RESULT_VAR} TRUE PARENT_SCOPE)
+        infra_debug("Variable ${VARIABLE_NAME} exists")
     else()
         set(${RESULT_VAR} FALSE PARENT_SCOPE)
+        infra_debug("Variable ${VARIABLE_NAME} does not exist")
     endif()
 endfunction()
 
@@ -402,6 +450,7 @@ function(infra_feature_summary FEATURE STATUS)
     get_property(SUMMARY GLOBAL PROPERTY INFRA_FEATURE_SUMMARY)
     list(APPEND SUMMARY "${FEATURE}: ${STATUS}")
     set_property(GLOBAL PROPERTY INFRA_FEATURE_SUMMARY "${SUMMARY}")
+    infra_debug("Added feature summary: ${FEATURE}: ${STATUS}")
 endfunction()
 
 # infra_print_feature_summary()
@@ -412,6 +461,7 @@ function(infra_print_feature_summary)
     # 获取全局属性中的功能摘要列表
     get_property(SUMMARY GLOBAL PROPERTY INFRA_FEATURE_SUMMARY)
     if(NOT SUMMARY)
+        infra_info("No features to summarize")
         return()
     endif()
 

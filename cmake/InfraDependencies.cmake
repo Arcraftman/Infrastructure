@@ -5,8 +5,9 @@
 # 防止重复包含
 if(DEFINED INFRA_DEPENDENCIES_INCLUDED)
     return()
+else()
+    set(INFRA_DEPENDENCIES_INCLUDED TRUE)
 endif()
-set(INFRA_DEPENDENCIES_INCLUDED TRUE)
 
 # 设置策略 CMP0074: find_package 使用 <PackageName>_ROOT 变量
 cmake_policy(SET CMP0074 NEW)
@@ -34,8 +35,13 @@ function(infra_find_package NAME)
     if(NOT ${NAME}_FOUND AND INFRA_ENABLE_FETCHCONTENT)
         if(NOT COMMAND FetchContent_Declare)
             include(FetchContent)
+            message(STATUS "[Infra] FetchContent included for ${NAME}")
         endif()
         message(STATUS "Infra: Dependency '${NAME}' not found with find_package(). FetchContent fallback is enabled, but must be configured per project.")
+    elseif(${NAME}_FOUND)
+        message(STATUS "[Infra] Found dependency: ${NAME} (${${NAME}_VERSION})")
+    else()
+        message(STATUS "[Infra] Dependency not found: ${NAME}")
     endif()
 
     # 将结果传递给父作用域
@@ -50,6 +56,7 @@ function(infra_find_pkg_config NAME)
     # 如果未启用 pkg-config，直接返回
     if(NOT INFRA_ENABLE_PKGCONFIG)
         set(${NAME}_PKG_CONFIG_FOUND OFF PARENT_SCOPE)
+        message(STATUS "[Infra] pkg-config disabled for ${NAME}")
         return()
     endif()
 
@@ -57,10 +64,17 @@ function(infra_find_pkg_config NAME)
     find_package(PkgConfig QUIET)
     if(NOT PkgConfig_FOUND)
         set(${NAME}_PKG_CONFIG_FOUND OFF PARENT_SCOPE)
+        message(STATUS "[Infra] pkg-config not found, skipping ${NAME}")
         return()
     endif()
 
     # 使用 pkg-config 检查包
     pkg_check_modules(${NAME} QUIET ${NAME})
     set(${NAME}_PKG_CONFIG_FOUND ${${NAME}_FOUND} PARENT_SCOPE)
+    
+    if(${NAME}_FOUND)
+        message(STATUS "[Infra] Found ${NAME} via pkg-config")
+    else()
+        message(STATUS "[Infra] ${NAME} not found via pkg-config")
+    endif()
 endfunction()

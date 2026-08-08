@@ -1,7 +1,8 @@
 #ifndef STK_CORE_QUEUE_H
 #define STK_CORE_QUEUE_H
 
-
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,16 +10,16 @@ extern "C" {
 
 /* =========================================================================
  * 动态队列 (FIFO)
- * 
+ *
  * 基于循环数组实现的队列，支持自动扩容。
  * 存储 void* 类型，可存放任意数据指针。
- * 
+ *
  * 时间复杂度:
  *   - enqueue:  O(1) 均摊
  *   - dequeue:  O(1)
  *   - front:    O(1)
  *   - back:     O(1)
- * 
+ *
  * Basic usage:
  * @code
  *   stk_queue q;
@@ -31,11 +32,11 @@ extern "C" {
  * ========================================================================= */
 
 typedef struct {
-    void** data;       /* 元素数组 */
-    size_t head;       /* 头部索引（出队位置） */
-    size_t tail;       /* 尾部索引（入队位置） */
-    size_t size;       /* 当前元素数量 */
-    size_t capacity;   /* 当前容量 */
+    void** data;     /* 元素数组 */
+    size_t head;     /* 头部索引（出队位置） */
+    size_t tail;     /* 尾部索引（入队位置） */
+    size_t size;     /* 当前元素数量 */
+    size_t capacity; /* 当前容量 */
 } stk_queue;
 
 /* =========================================================================

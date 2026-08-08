@@ -1,7 +1,8 @@
 #ifndef STK_CORE_LIST_H
 #define STK_CORE_LIST_H
 
-
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,14 +29,14 @@ STK_API STK_STATUS stk_list_push_front(stk_list* l, void* val);
 STK_API STK_STATUS stk_list_push_back(stk_list* l, void* val);
 STK_API STK_STATUS stk_list_pop_front(stk_list* l);
 STK_API STK_STATUS stk_list_pop_back(stk_list* l);
-STK_API void*      stk_list_front(stk_list* l);
-STK_API void*      stk_list_back(stk_list* l);
-STK_API void*      stk_list_get(stk_list* l, size_t idx);
+STK_API void* stk_list_front(stk_list* l);
+STK_API void* stk_list_back(stk_list* l);
+STK_API void* stk_list_get(stk_list* l, size_t idx);
 STK_API STK_STATUS stk_list_set(stk_list* l, size_t idx, void* val);
 STK_API STK_STATUS stk_list_insert(stk_list* l, size_t idx, void* val);
 STK_API STK_STATUS stk_list_erase(stk_list* l, size_t idx);
-STK_API size_t     stk_list_len(stk_list* l);
-STK_API bool       stk_list_empty(stk_list* l);
+STK_API size_t stk_list_len(stk_list* l);
+STK_API bool stk_list_empty(stk_list* l);
 STK_API STK_STATUS stk_list_clear(stk_list* l);
 
 #ifdef __cplusplus

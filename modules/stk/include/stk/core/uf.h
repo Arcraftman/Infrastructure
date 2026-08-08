@@ -1,7 +1,8 @@
 #ifndef STK_CORE_UF_H
 #define STK_CORE_UF_H
 
-
+#include "stk/def.h"
+#include "stk/utils/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,15 +10,15 @@ extern "C" {
 
 /* =========================================================================
  * 并查集 / 不相交集合 (Union-Find / Disjoint Set Union)
- * 
+ *
  * 用于处理元素分组和连通性问题。
  * 支持路径压缩和按秩合并优化。
- * 
+ *
  * 时间复杂度:
  *   - find:    O(α(n)) 近似常数
  *   - union:   O(α(n)) 近似常数
  *   - connected: O(α(n)) 近似常数
- * 
+ *
  * Basic usage:
  * @code
  *   stk_uf uf;
@@ -30,10 +31,10 @@ extern "C" {
  * ========================================================================= */
 
 typedef struct {
-    size_t* parent;    /* 父节点数组 */
-    size_t* rank;      /* 秩（树高度上界） */
-    size_t  count;     /* 元素个数 */
-    size_t  sets;      /* 当前集合数量 */
+    size_t* parent; /* 父节点数组 */
+    size_t* rank;   /* 秩（树高度上界） */
+    size_t count;   /* 元素个数 */
+    size_t sets;    /* 当前集合数量 */
 } stk_uf;
 
 /* =========================================================================

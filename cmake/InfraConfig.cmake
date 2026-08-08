@@ -11,8 +11,9 @@
 # 防止重复包含
 if(DEFINED INFRA_CONFIG_INCLUDED)
     return()
+else()
+    set(INFRA_CONFIG_INCLUDED TRUE)
 endif()
-set(INFRA_CONFIG_INCLUDED TRUE)
 
 # 包含基础工具模块
 include(InfraCommon)
@@ -37,8 +38,11 @@ infra_info("Platform: ${INFRA_PLATFORM}")
 # 如果未指定构建类型，设置默认值
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING
-        "Build type (Debug|Release|RelWithDebInfo|MinSizeRel)")
+        "Build type (Debug|Release|RelWithDebInfo|MinSizeRel)" FORCE)
+    set(CMAKE_BUILD_TYPE "Debug")
     infra_info("Build type not specified, defaulting to 'Debug'")
+else()
+    infra_debug("Build type specified: ${CMAKE_BUILD_TYPE}")
 endif()
 
 # 验证构建类型是否有效
@@ -47,6 +51,9 @@ list(FIND VALID_BUILD_TYPES "${CMAKE_BUILD_TYPE}" _BUILD_TYPE_VALID)
 if(_BUILD_TYPE_VALID EQUAL -1)
     infra_fatal("Invalid CMAKE_BUILD_TYPE '${CMAKE_BUILD_TYPE}'. "
                 "Must be one of: ${VALID_BUILD_TYPES}")
+    message(FATAL_ERROR "${INFRA_FATAL_TEXT}")
+else()
+    infra_debug("Build type '${CMAKE_BUILD_TYPE}' is valid")
 endif()
 
 infra_info("Build Type: ${CMAKE_BUILD_TYPE}")
@@ -66,7 +73,8 @@ elseif(INFRA_LIBRARY_TYPE STREQUAL "STATIC")
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
     infra_info("Library Type: STATIC")
 else()
-    infra_fatal("Invalid INFRA_LIBRARY_TYPE. Must be SHARED or STATIC")
+    infra_fatal("Invalid INFRA_LIBRARY_TYPE '${INFRA_LIBRARY_TYPE}'. Must be SHARED or STATIC")
+    message(FATAL_ERROR "${INFRA_FATAL_TEXT}")
 endif()
 
 # ============================================================================
@@ -96,6 +104,10 @@ option(INFRA_ENABLE_STRICT_WARNINGS
 # 地址消毒剂 (AddressSanitizer)
 option(INFRA_ENABLE_ASAN
     "Enable AddressSanitizer for memory debugging" OFF)
+
+# 覆盖率（GCC/Clang + gcov/lcov/gcovr）
+option(INFRA_ENABLE_COVERAGE
+    "Enable source coverage instrumentation for test builds" OFF)
 
 # ============================================================================
 # 测试配置
@@ -168,29 +180,32 @@ infra_info("Version: ${INFRA_VERSION_STRING}")
 # ============================================================================
 
 # 要构建的模块列表
-# 应在包含此文件之前由父级 CMakeLists.txt 设置
-if(NOT DEFINED INFRA_MODULES)
+# 通过 -DINFRA_MODULES='stk;lnx;web' 显式指定。
+# 未指定时不报错，仅警告并构建空模块集（什么都不构建）。
+if(NOT DEFINED INFRA_MODULES OR INFRA_MODULES STREQUAL "")
     set(INFRA_MODULES "" CACHE STRING "Semicolon-separated list of modules to build")
-    infra_warn("INFRA_MODULES not defined - no modules will be built")
-endif()
-
-if(INFRA_MODULES)
+    infra_warn("INFRA_MODULES not specified - no modules will be built. "
+               "Specify e.g. -DINFRA_MODULES='stk;lnx;web' to build modules.")
+else()
     infra_info("Configured modules: ${INFRA_MODULES}")
 endif()
 
 # 为每个模块生成启用/禁用选项
+#
+# 约定：INFRA_MODULES 中列出的模块即代表“要构建的模块”，
+# 因此只要出现在 INFRA_MODULES 里就强制启用（FORCE），
+# 不再需要额外传 -DINFRA_ENABLE_*=ON。
+# 若想排除某个模块，直接不把它写进 INFRA_MODULES 即可。
 foreach(MODULE ${INFRA_MODULES})
     string(TOUPPER "${MODULE}" MODULE_UPPER)
-    if(MODULE STREQUAL "stk")
-        # stk 模块默认启用
-        option(INFRA_ENABLE_${MODULE_UPPER}
-            "Enable ${MODULE} module" ON)
-    else()
-        # 其他模块默认禁用
-        option(INFRA_ENABLE_${MODULE_UPPER}
-            "Enable ${MODULE} module" OFF)
-    endif()
+    set(INFRA_ENABLE_${MODULE_UPPER} ON CACHE BOOL
+        "Enable ${MODULE} module (auto-enabled because listed in INFRA_MODULES)" FORCE)
+    infra_info("Module '${MODULE}' enabled (via INFRA_MODULES)")
 endforeach()
+
+# stk c++
+option(INFRA_STK_ENABLE_CXX
+    "Enable C++ for stk module" OFF)
 
 # stk 核心组件选项
 option(INFRA_STK_ENABLE_CORE
@@ -201,6 +216,10 @@ option(INFRA_STK_CORE_ENABLE_LIST
     "Enable stk core list implementation" ON)
 option(INFRA_STK_CORE_ENABLE_RBTREE
     "Enable stk core red-black tree implementation" ON)
+option(INFRA_STK_CORE_ENABLE_SLIST
+    "Enable stk core singly-linked list implementation" ON)
+option(INFRA_STK_CORE_ENABLE_SET
+    "Enable stk core set (hash-based) implementation" ON)
 option(INFRA_STK_CORE_ENABLE_STRING
     "Enable stk core string implementation" ON)
 option(INFRA_STK_CORE_ENABLE_ARENA
@@ -241,6 +260,9 @@ option(INFRA_VERBOSE_CMAKE
 
 if(INFRA_VERBOSE_CMAKE)
     set(CMAKE_MESSAGE_LOG_LEVEL VERBOSE)
+    infra_info("Verbose CMake output enabled")
+else()
+    infra_debug("Verbose CMake output disabled")
 endif()
 
 # ============================================================================
@@ -250,18 +272,27 @@ endif()
 # 检查冲突的选项
 if(INFRA_ENABLE_ASAN AND INFRA_ENABLE_STRICT_WARNINGS)
     infra_warn("AddressSanitizer may produce warnings that conflict with -Werror")
+else()
+    infra_debug("No conflicts detected between ASAN and strict warnings")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(NOT INFRA_ENABLE_DEBUG_SYMBOLS)
         infra_warn("Debug build without debug symbols (-g) recommended for Debug builds")
+    else()
+        infra_debug("Debug build with debug symbols enabled")
     endif()
+else()
+    infra_debug("Not a Debug build, debug symbols: ${INFRA_ENABLE_DEBUG_SYMBOLS}")
 endif()
 
 if(BUILD_SHARED_LIBS AND INFRA_POSITION_INDEPENDENT_CODE)
     # 这是预期的，也是好的
+    infra_debug("Shared library with PIC enabled")
 elseif(NOT BUILD_SHARED_LIBS AND NOT INFRA_POSITION_INDEPENDENT_CODE)
     infra_info("Static library build without PIC")
+else()
+    infra_debug("Shared/PIC configuration: SHARED=${BUILD_SHARED_LIBS}, PIC=${INFRA_POSITION_INDEPENDENT_CODE}")
 endif()
 
 # ============================================================================
@@ -290,6 +321,7 @@ function(infra_print_build_config)
     infra_print_config_value("PIC" "${INFRA_POSITION_INDEPENDENT_CODE}")
     infra_print_config_value("Warnings" "${INFRA_ENABLE_WARNINGS}")
     infra_print_config_value("Strict Warnings" "${INFRA_ENABLE_STRICT_WARNINGS}")
+    infra_print_config_value("Coverage" "${INFRA_ENABLE_COVERAGE}")
 
     infra_separator()
     message(STATUS "Enabled Modules:")
@@ -303,7 +335,7 @@ function(infra_print_build_config)
             endif()
         endforeach()
     else()
-        message(STATUS "  (none)")
+        message(STATUS "  none")
     endif()
 
     infra_separator()
