@@ -1,3 +1,19 @@
+/*
+ * stk_set — a hash set built on top of stk_hashmap.
+ *
+ * Engineering notes:
+ *   - The set never reaches into hashmap's private fields; it uses only the
+ *     public map API plus the map iterator.  This keeps set.c insulated from
+ *     backend changes (chaining vs. open addressing).
+ *   - Set elements are the map keys; values are always NULL.  The set does
+ *     not own element memory — the caller owns the pointers it inserts.
+ *   - Allocation is injected through stk_hashmap, so a set can use a custom
+ *     allocator via stk_set_init_with_alloc.
+ *   - Set algebra (union / intersection / difference / symmetric difference)
+ *     is implemented with a single in-place filter helper, which is safe
+ *     because hashmap_foreach snapshots entries before invoking callbacks.
+ */
+
 #include "stk/core/set.h"
 
 #include "stk/core/hashmap.h"
@@ -6,33 +22,25 @@
 #include "stk/utils/logger.h"
 #include "stk/utils/status.h"
 
-/* =========================================================================
- * 默认哈希/相等函数（复用 hashmap 的实现）
- * ========================================================================= */
+/* ------------------------------------------------------------------ */
+/* Construction / destruction                                         */
+/* ------------------------------------------------------------------ */
 
-uint64_t stk_set_str_hash(const void* key)
+STK_STATUS stk_set_init_with_alloc(stk_set* set,
+                                   stk_hashmap_hash_fn hash_fn,
+                                   stk_hashmap_eq_fn eq_fn,
+                                   const stk_allocator* alloc)
 {
-    return stk_hashmap_str_hash(key);
+    STK_RETURN_IF(!set, STK_EINVAL, "set: init NULL self");
+    /* Open addressing is the better default for set workloads (no node
+     * overhead, cache-friendly, frequent membership tests). */
+    return stk_hashmap_create_with_alloc(&set->map, HASHMAP_MODE_OPEN_ADDRESS,
+                                          0, hash_fn, eq_fn, alloc);
 }
-
-bool stk_set_str_eq(const void* a, const void* b)
-{
-    return stk_hashmap_str_eq(a, b);
-}
-
-/* =========================================================================
- * 生命周期管理
- * ========================================================================= */
 
 STK_STATUS stk_set_init(stk_set* set, stk_hashmap_hash_fn hash_fn, stk_hashmap_eq_fn eq_fn)
 {
-    STK_RETURN_IF(!set, STK_EINVAL, "Set init: NULL set pointer");
-
-    /* 初始化哈希表，值存储为 NULL */
-    stk_hashmap_init(&set->map, 0, hash_fn, eq_fn);
-
-    STK_LOG_DEBUG("Set initialized");
-    return STK_OK;
+    return stk_set_init_with_alloc(set, hash_fn, eq_fn, NULL);
 }
 
 STK_STATUS stk_set_init_with_capacity(stk_set* set,
@@ -40,272 +48,229 @@ STK_STATUS stk_set_init_with_capacity(stk_set* set,
                                       stk_hashmap_hash_fn hash_fn,
                                       stk_hashmap_eq_fn eq_fn)
 {
-    STK_RETURN_IF(!set, STK_EINVAL, "Set init_with_capacity: NULL set pointer");
-
-    stk_hashmap_init(&set->map, initial_capacity, hash_fn, eq_fn);
-
-    STK_LOG_DEBUG("Set initialized with capacity: %zu", initial_capacity);
-    return STK_OK;
+    STK_RETURN_IF(!set, STK_EINVAL, "set: init_with_capacity NULL self");
+    return stk_hashmap_create(&set->map, HASHMAP_MODE_OPEN_ADDRESS,
+                              initial_capacity, hash_fn, eq_fn);
 }
 
 STK_STATUS stk_set_free(stk_set* set)
 {
-    STK_RETURN_IF(!set, STK_EINVAL, "Set free: NULL set pointer");
-
-    stk_hashmap_free(&set->map);
-
-    STK_LOG_DEBUG("Set freed");
-    return STK_OK;
+    STK_RETURN_IF(!set, STK_EINVAL, "set: free NULL self");
+    return stk_hashmap_free(&set->map);
 }
 
-/* =========================================================================
- * 核心操作
- * ========================================================================= */
+/* ------------------------------------------------------------------ */
+/* Core operations                                                    */
+/* ------------------------------------------------------------------ */
 
 STK_STATUS stk_set_insert(stk_set* set, void* value)
 {
-    STK_RETURN_IF(!set, STK_EINVAL, "Set insert: NULL set pointer");
-    STK_RETURN_IF(!value, STK_EINVAL, "Set insert: NULL value");
-
-    /* 如果已存在，stk_hashmap_set 会更新值（但我们的值是 NULL，所以无影响） */
-    stk_hashmap_set(&set->map, value, NULL);
-
-    STK_LOG_DEBUG("Set insert: value inserted");
-    return STK_OK;
+    STK_RETURN_IF(!set, STK_EINVAL, "set: insert NULL self");
+    STK_RETURN_IF(!value, STK_EINVAL, "set: insert NULL value");
+    return stk_hashmap_set(&set->map, value, NULL);
 }
 
 STK_STATUS stk_set_remove(stk_set* set, const void* value)
 {
-    STK_RETURN_IF(!set, STK_EINVAL, "Set remove: NULL set pointer");
-    STK_RETURN_IF(!value, STK_EINVAL, "Set remove: NULL value");
-
+    STK_RETURN_IF(!set, STK_EINVAL, "set: remove NULL self");
+    STK_RETURN_IF(!value, STK_EINVAL, "set: remove NULL value");
     stk_hashmap_remove(&set->map, value);
-
-    STK_LOG_DEBUG("Set remove: value removed");
     return STK_OK;
 }
 
 bool stk_set_contains(const stk_set* set, const void* value)
 {
-    if (!set || !value) {
-        if (set)
-            STK_LOG_WARN("Set contains: NULL %s", !value ? "value" : "set");
+    if (!set || !value)
         return false;
-    }
-
     return stk_hashmap_has(&set->map, value);
 }
 
 STK_STATUS stk_set_clear(stk_set* set)
 {
-    STK_RETURN_IF(!set, STK_EINVAL, "Set clear: NULL set pointer");
-
-    stk_hashmap_clear(&set->map);
-
-    STK_LOG_DEBUG("Set cleared");
-    return STK_OK;
+    STK_RETURN_IF(!set, STK_EINVAL, "set: clear NULL self");
+    return stk_hashmap_clear(&set->map);
 }
 
-/* =========================================================================
- * 集合操作（内部辅助函数）
- * ========================================================================= */
+/* ------------------------------------------------------------------ */
+/* Set algebra                                                        */
+/* ------------------------------------------------------------------ */
 
-/* 获取哈希表中的值（用于遍历） */
-typedef struct {
-    stk_set* dst;
-    bool in_place;
-} set_foreach_ctx;
+/* In-place filter: walk `dst`, and for each element decide whether to
+ * keep it.  `keep` receives the element and the peer set, and returns
+ * true if the element should remain.  Because hashmap_foreach snapshots
+ * all pairs before invoking the callback, removing from `dst` mid-walk
+ * is safe. */
+typedef bool (*set_keep_fn)(const void* value, const stk_set* peer);
 
-static bool set_union_callback(void* key, void* value, void* user_data)
+static void set_filter(stk_set* dst, const stk_set* peer, set_keep_fn keep)
 {
-    (void)value;
-    stk_set* dst = (stk_set*)user_data;
-    stk_set_insert(dst, key);
-    return true;
-}
-
-static bool set_intersection_callback(void* key, void* value, void* user_data)
-{
-    (void)value;
-    stk_set* src = (stk_set*)user_data;
-    if (!stk_set_contains(src, key)) {
-        stk_set_remove((stk_set*)user_data, key);
+    /* Snapshot the keys first (iterating + removing simultaneously is fine
+     * with the pull iterator, but snapshotting keeps the logic obviously
+     * correct regardless of backend). */
+    size_t n = stk_set_size(dst);
+    void** keys = n ? (void**)malloc(n * sizeof(void*)) : NULL;
+    if (!keys && n) {
+        STK_LOG_ERROR("set: filter snapshot alloc failed");
+        return;
     }
-    return true;
+    size_t k = 0;
+    stk_hashmap_iter it;
+    stk_hashmap_iter_init(&it, &dst->map);
+    void* key;
+    void* val;
+    while (stk_hashmap_iter_next(&it, &key, &val) && k < n) {
+        (void)val;
+        keys[k++] = key;
+    }
+    for (size_t i = 0; i < k; i++) {
+        if (!keep(keys[i], peer))
+            stk_set_remove(dst, keys[i]);
+    }
+    free(keys);
 }
 
-/* =========================================================================
- * 集合操作
- * ========================================================================= */
+static bool keep_in_both(const void* v, const stk_set* peer) { return stk_set_contains(peer, v); }
+static bool keep_not_in(const void* v, const stk_set* peer)  { return !stk_set_contains(peer, v); }
 
 STK_STATUS stk_set_union(stk_set* dst, const stk_set* src)
 {
-    STK_RETURN_IF(!dst, STK_EINVAL, "Set union: NULL destination set");
-    STK_RETURN_IF(!src, STK_EINVAL, "Set union: NULL source set");
+    STK_RETURN_IF(!dst, STK_EINVAL, "set: union NULL dst");
+    STK_RETURN_IF(!src, STK_EINVAL, "set: union NULL src");
 
-    stk_hashmap_foreach(&src->map, set_union_callback, dst);
-
-    STK_LOG_DEBUG("Set union completed");
+    stk_hashmap_iter it;
+    stk_hashmap_iter_init(&it, &src->map);
+    void* key;
+    void* val;
+    while (stk_hashmap_iter_next(&it, &key, &val)) {
+        (void)val;
+        if (!stk_set_contains(dst, key))
+            stk_set_insert(dst, key);
+    }
     return STK_OK;
 }
 
 STK_STATUS stk_set_intersection(stk_set* dst, const stk_set* src)
 {
-    STK_RETURN_IF(!dst, STK_EINVAL, "Set intersection: NULL destination set");
-    STK_RETURN_IF(!src, STK_EINVAL, "Set intersection: NULL source set");
-
-    /* 创建临时集合来存储交集结果 */
-    stk_set result;
-    stk_set_init(&result, dst->map.hash_fn, dst->map.eq_fn);
-
-    /* 遍历 dst，只保留也在 src 中的元素 */
-    stk_hashmap_foreach(&dst->map, set_intersection_callback, (void*)src);
-
-    STK_LOG_DEBUG("Set intersection completed");
+    STK_RETURN_IF(!dst, STK_EINVAL, "set: intersection NULL dst");
+    STK_RETURN_IF(!src, STK_EINVAL, "set: intersection NULL src");
+    set_filter(dst, src, keep_in_both);   /* keep only elements also in src */
     return STK_OK;
 }
 
 STK_STATUS stk_set_difference(stk_set* dst, const stk_set* src)
 {
-    STK_RETURN_IF(!dst, STK_EINVAL, "Set difference: NULL destination set");
-    STK_RETURN_IF(!src, STK_EINVAL, "Set difference: NULL source set");
-
-    /* 遍历 src，从 dst 中移除 */
-    stk_hashmap_foreach(&src->map, set_intersection_callback, dst);
-
-    STK_LOG_DEBUG("Set difference completed");
+    STK_RETURN_IF(!dst, STK_EINVAL, "set: difference NULL dst");
+    STK_RETURN_IF(!src, STK_EINVAL, "set: difference NULL src");
+    set_filter(dst, src, keep_not_in);     /* drop elements that are in src  */
     return STK_OK;
 }
 
 STK_STATUS stk_set_symmetric_difference(stk_set* dst, const stk_set* src)
 {
-    STK_RETURN_IF(!dst, STK_EINVAL, "Set symmetric_difference: NULL destination set");
-    STK_RETURN_IF(!src, STK_EINVAL, "Set symmetric_difference: NULL source set");
+    STK_RETURN_IF(!dst, STK_EINVAL, "set: symdiff NULL dst");
+    STK_RETURN_IF(!src, STK_EINVAL, "set: symdiff NULL src");
 
-    /* 创建临时集合 */
-    stk_set temp;
-    stk_set_init(&temp, dst->map.hash_fn, dst->map.eq_fn);
+    /* (dst \ src) ∪ (src \ dst) == (dst ∪ src) \ (dst ∩ src). */
+    stk_set inter;
+    stk_set_init_with_alloc(&inter, dst->map.hash_fn, dst->map.eq_fn, dst->map.alloc);
 
-    /* 先复制 dst 到 temp */
-    stk_hashmap_foreach(&dst->map, set_union_callback, &temp);
+    /* inter = dst ∩ src */
+    stk_hashmap_iter it;
+    stk_hashmap_iter_init(&it, &src->map);
+    void* k;
+    void* v;
+    while (stk_hashmap_iter_next(&it, &k, &v)) {
+        (void)v;
+        if (stk_set_contains(dst, k))
+            stk_set_insert(&inter, k);
+    }
 
-    /* 对称差 = (dst ∪ src) - (dst ∩ src) */
-    /* 先取并集到 dst */
-    stk_set_union(dst, src);
-    /* 再取交集到 temp */
-    /* 最后从 dst 中删除 temp 中的元素 */
-    stk_hashmap_foreach(&temp.map, set_intersection_callback, dst);
+    stk_set_union(dst, src);                 /* dst = dst ∪ src */
+    set_filter(dst, &inter, keep_not_in);    /* drop dst∩src -> symmetric diff */
 
-    stk_set_free(&temp);
-
-    STK_LOG_DEBUG("Set symmetric_difference completed");
+    stk_set_free(&inter);
     return STK_OK;
 }
 
 bool stk_set_is_subset(const stk_set* a, const stk_set* b)
 {
-    if (!a || !b) {
-        STK_LOG_WARN("Set is_subset: NULL %s", !a ? "first set" : "second set");
+    if (!a || !b)
         return false;
-    }
-
-    /* 如果 a 的大小大于 b，a 不可能是 b 的子集 */
-    if (a->map.count > b->map.count) {
+    if (stk_set_size(a) > stk_set_size(b))
         return false;
-    }
 
-    /* 遍历 a，检查每个元素是否都在 b 中 */
-    for (size_t i = 0; i < a->map.capacity; i++) {
-        if (a->map.entries[i].occupied) {
-            if (!stk_set_contains(b, a->map.entries[i].key)) {
-                return false;
-            }
-        }
+    stk_hashmap_iter it;
+    stk_hashmap_iter_init(&it, &a->map);
+    void* key;
+    void* val;
+    while (stk_hashmap_iter_next(&it, &key, &val)) {
+        (void)val;
+        if (!stk_set_contains(b, key))
+            return false;
     }
-
     return true;
 }
 
 bool stk_set_is_equal(const stk_set* a, const stk_set* b)
 {
-    if (!a || !b) {
-        STK_LOG_WARN("Set is_equal: NULL %s", !a ? "first set" : "second set");
+    if (!a || !b)
         return false;
-    }
-
-    if (a->map.count != b->map.count) {
+    if (stk_set_size(a) != stk_set_size(b))
         return false;
-    }
-
     return stk_set_is_subset(a, b);
 }
 
-/* =========================================================================
- * 查询接口
- * ========================================================================= */
+/* ------------------------------------------------------------------ */
+/* Query / traversal                                                  */
+/* ------------------------------------------------------------------ */
 
-size_t stk_set_size(const stk_set* set)
+size_t stk_set_size(const stk_set* set)  { return set ? stk_hashmap_count(&set->map) : 0; }
+bool   stk_set_empty(const stk_set* set) { return stk_set_size(set) == 0; }
+
+STK_STATUS stk_set_foreach(const stk_set* set,
+                           bool (*fn)(void* value, void* user_data),
+                           void* user_data)
 {
-    return set ? set->map.count : 0;
-}
+    STK_RETURN_IF(!set, STK_EINVAL, "set: foreach NULL self");
+    STK_RETURN_IF(!fn,  STK_EINVAL, "set: foreach NULL fn");
 
-bool stk_set_empty(const stk_set* set)
-{
-    return set ? set->map.count == 0 : true;
-}
-
-/* =========================================================================
- * 遍历操作
- * ========================================================================= */
-
-STK_STATUS
-stk_set_foreach(const stk_set* set, bool (*fn)(void* value, void* user_data), void* user_data)
-{
-    STK_RETURN_IF(!set, STK_EINVAL, "Set foreach: NULL set pointer");
-    STK_RETURN_IF(!fn, STK_EINVAL, "Set foreach: NULL callback function");
-
-    /* 包装回调函数，适配 hashmap 的 foreach */
-    bool wrapper(void* key, void* value, void* ud)
-    {
-        (void)value;
-        return fn(key, ud);
+    stk_hashmap_iter it;
+    stk_hashmap_iter_init(&it, &set->map);
+    void* key;
+    void* val;
+    while (stk_hashmap_iter_next(&it, &key, &val)) {
+        (void)val;
+        if (!fn(key, user_data))
+            break;
     }
-
-    return stk_hashmap_foreach(&set->map, wrapper, user_data);
+    return STK_OK;
 }
 
 void** stk_set_to_array(const stk_set* set)
 {
-    if (!set) {
-        STK_LOG_WARN("Set to_array: NULL set pointer");
+    if (!set)
         return NULL;
-    }
+    size_t n = stk_set_size(set);
+    if (n == 0)
+        return NULL;
 
-    size_t size = stk_set_size(set);
-    if (size == 0) {
+    void** array = (void**)malloc(n * sizeof(void*));
+    if (!array)
         return NULL;
-    }
-
-    void** array = (void**)malloc(sizeof(void*) * size);
-    if (!array) {
-        STK_LOG_ERROR("Set to_array: malloc failed");
-        return NULL;
-    }
 
     size_t idx = 0;
-    for (size_t i = 0; i < set->map.capacity && idx < size; i++) {
-        if (set->map.entries[i].occupied) {
-            array[idx++] = set->map.entries[i].key;
-        }
+    stk_hashmap_iter it;
+    stk_hashmap_iter_init(&it, &set->map);
+    void* key;
+    void* val;
+    while (stk_hashmap_iter_next(&it, &key, &val) && idx < n) {
+        (void)val;
+        array[idx++] = key;
     }
-
-    STK_LOG_DEBUG("Set to_array: converted %zu elements", size);
     return array;
 }
 
 void stk_set_free_array(void** array)
 {
-    if (array) {
-        free(array);
-    }
+    free(array);
 }

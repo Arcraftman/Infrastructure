@@ -1,6 +1,8 @@
 #ifndef STK_CORE_SET_H
 #define STK_CORE_SET_H
 
+
+
 #include "stk/core/hashmap.h"
 #include "stk/def.h"
 #include "stk/utils/status.h"
@@ -36,13 +38,19 @@ typedef struct {
     stk_hashmap map; /* 底层使用哈希表，值存储为 NULL */
 } stk_set;
 
-/* 默认哈希/相等函数（用于 C 字符串键） */
-STK_API uint64_t stk_set_str_hash(const void* key);
-STK_API bool stk_set_str_eq(const void* a, const void* b);
+/* 字符串键可直接复用 hashmap 提供的 stk_hashmap_str_hash / stk_hashmap_str_eq
+ * 作为 stk_set_init 的 hash_fn / eq_fn 参数，无需 set 层额外包装。 */
 
 /* =========================================================================
  * 生命周期管理
  * ========================================================================= */
+
+/* 初始化空集合，并注入自定义分配器（用于测试/嵌入式场景）。
+ * 传入 NULL 等价 stk_set_init（使用 STK_ALLOCATOR_DEFAULT）。 */
+STK_API STK_STATUS stk_set_init_with_alloc(stk_set* set,
+                                           stk_hashmap_hash_fn hash_fn,
+                                           stk_hashmap_eq_fn eq_fn,
+                                           const stk_allocator* alloc);
 
 /* 初始化空集合 */
 STK_API STK_STATUS stk_set_init(stk_set* set, stk_hashmap_hash_fn hash_fn, stk_hashmap_eq_fn eq_fn);

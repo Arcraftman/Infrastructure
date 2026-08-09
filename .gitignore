@@ -47,3 +47,4 @@ vcpkg_installed/
 vcpkg-manifest-install.log
 
 .workbuddy
+**/tests/*.c
