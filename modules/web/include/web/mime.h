@@ -12,16 +12,14 @@ extern "C" {
  * @param ext  Extension including the dot (".html", ".css") or without.
  * @return MIME type string (e.g. "text/html"), or "application/octet-stream".
  */
-WEB_API const char *
-web_mime_by_ext(const char *ext);
+WEB_API const char* web_mime_by_ext(const char* ext);
 
 /**
  * Look up MIME type from a file path.
  * @param path  File path or URL path.
  * @return MIME type string.
  */
-WEB_API const char *
-web_mime_by_path(const char *path);
+WEB_API const char* web_mime_by_path(const char* path);
 
 #ifdef __cplusplus
 }

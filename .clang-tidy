@@ -1,22 +1,54 @@
 ---
+# .clang-tidy — Infrastructure 项目静态分析配置
+#
+# 与 .clang-format（LLVM 基础风格）对齐。聚焦"能在提交前抓出真实 bug"的检查，
+# 而非追求规则全集。通过 scripts/tidy.sh 或 CI 的 tidy job 执行。
+#
+# 使用方式：
+#   clang-tidy -p build/linux-debug-ninja modules/stk/src/core/vector.c
+#   或整体运行： run-clang-tidy -p build/linux-debug-ninja
+
 Checks: >
   -*,
   bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  cert-*,
+  -cert-msc32-c,
+  -cert-dcl03-c,
   clang-analyzer-*,
   concurrency-*,
-  -clang-analyzer-cplusplus*,
   misc-*,
-  -misc-non-private-member-variables-in-classes,
+  -misc-include-cleaner,
+  -misc-no-recursion,
   modernize-*,
   -modernize-use-trailing-return-type,
   performance-*,
   portability-*,
   readability-*,
+  -readability-identifier-length,
   -readability-magic-numbers,
   -readability-uppercase-literal-suffix,
-  -readability-function-cognitive-complexity,
-  -readability-identifier-length,
-  -readability-isolate-declaration,
-FormatStyle: file
-...
+  -readability-function-cognitive-complexity
 
+WarningsAsErrors: ''
+
+# 让 -W 相关警告不升级为错误（先建底线，再逐步收紧）
+HeaderFilterRegex: '^(modules)/.*'
+
+# 项目使用 C11 / C++17（与 infra_setup_target 的 target_compile_features 对齐）
+ExtraArgs:
+  - -std=c11
+
+CheckOptions:
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.StructCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: bugprone-suspicious-string-compare.WarnOnLogicalNotComparison
+    value: true
+...

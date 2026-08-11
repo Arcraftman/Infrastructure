@@ -1,129 +1,135 @@
 #include "stk/core/hashmap.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-/* Fowler-Noll-Vo 1a 64-bit hash */
-uint64_t hashmap_str_hash(const void *key) {
-    const unsigned char *p = (const unsigned char *)key;
-    uint64_t h = 0xcbf29ce484222325ULL;
-    while (*p) { h ^= *p; h *= 0x100000001b3ULL; p++; }
-    return h;
-}
+/* 公开句柄：内部持有一个 union（chainmap | oamap），对外不透明。
+ * 只存 mode 做分派；capacity 仅创建时使用，不保留。
+ * key/value 所有权归调用方：destroy 时不 free key/value。 */
+struct stk_hashmap {
+    stk_hashmap_mode mode;
+    stk_hash_fn hash;
+    stk_eq_fn   eq;
+    const stk_allocator *alloc;
+    union {
+        stk_chainmap chain;
+        stk_oamap    oa;
+    } u;
+};
 
-bool hashmap_str_eq(const void *a, const void *b) {
-    return strcmp((const char *)a, (const char *)b) == 0;
-}
+stk_hashmap *stk_hashmap_create(stk_hashmap_mode mode, size_t capacity,
+                                stk_hash_fn hash, stk_eq_fn eq,
+                                const stk_allocator *alloc) {
+    if (alloc == NULL) alloc = &STK_ALLOCATOR_DEFAULT;
 
-static uint64_t hashmap_hash(const hashmap *m, const void *key) {
-    uint64_t h = m->hash_fn(key);
-    /* Ensure no tombstone bit-flag conflicts: mask to capacity-1 */
-    return h & (uint64_t)(m->capacity - 1);
-}
+    stk_hashmap *m = (stk_hashmap *)stk_i_alloc(alloc, sizeof(stk_hashmap));
+    if (m == NULL) return NULL;
 
-static size_t hashmap_probe(const hashmap *m, const void *key) {
-    uint64_t idx = hashmap_hash(m, key);
-    while (m->entries[idx].occupied || m->entries[idx].tombstone) {
-        if (m->entries[idx].occupied && m->eq_fn(m->entries[idx].key, key))
-            break;
-        idx = (idx + 1) & (uint64_t)(m->capacity - 1);
+    m->mode = mode;
+    m->hash = hash;
+    m->eq = eq;
+    m->alloc = alloc;
+    memset(&m->u, 0, sizeof(m->u));
+
+    if (mode == STK_HASHMAP_CHAIN) {
+        stk_i_chainmap_init(&m->u.chain, capacity, hash, eq, alloc);
+    } else if (mode == STK_HASHMAP_OA) {
+        stk_i_oamap_init(&m->u.oa, capacity, hash, eq, alloc);
+    } else {
+        /* 未知 mode：释放并返回 NULL，调用方应视为失败 */
+        stk_i_free(alloc, m);
+        return NULL;
     }
-    return (size_t)idx;
+    return m;
 }
 
-static bool hashmap_grow(hashmap *m, size_t new_cap) {
-    hashmap_entry *old = m->entries;
-    size_t old_cap = m->capacity;
-    m->entries = (hashmap_entry *)calloc(new_cap, sizeof(hashmap_entry));
-    if (!m->entries) return false;
-    m->capacity   = new_cap;
-    m->count      = 0;
-    m->tombstones = 0;
-    for (size_t i = 0; i < old_cap; i++) {
-        if (old[i].occupied) {
-            hashmap_set(m, old[i].key, old[i].value);
-        }
+void stk_hashmap_destroy(stk_hashmap *m) {
+    if (m == NULL) return;
+    if (m->mode == STK_HASHMAP_CHAIN) {
+        stk_i_chainmap_free(&m->u.chain);
+    } else if (m->mode == STK_HASHMAP_OA) {
+        stk_i_oamap_free(&m->u.oa);
     }
-    free(old);
-    return true;
+    /* 不 free key/value（所有权归调用方） */
+    stk_i_free(m->alloc, m);
 }
 
-void hashmap_init(hashmap *m, size_t initial_capacity,
-                  hashmap_hash_fn hash_fn, hashmap_eq_fn eq_fn) {
-    if (initial_capacity < 8) initial_capacity = 8;
-    /* Round up to next power of two */
-    size_t cap = 1;
-    while (cap < initial_capacity) cap <<= 1;
-    m->entries    = (hashmap_entry *)calloc(cap, sizeof(hashmap_entry));
-    m->capacity   = m->entries ? cap : 0;
-    m->count      = 0;
-    m->tombstones = 0;
-    m->hash_fn    = hash_fn ? hash_fn : hashmap_str_hash;
-    m->eq_fn      = eq_fn   ? eq_fn   : hashmap_str_eq;
+int stk_hashmap_set(stk_hashmap *m, void *key, void *value) {
+    if (m == NULL) return 0;
+    if (m->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chainmap_set(&m->u.chain, key, value);
+    return stk_i_oamap_set(&m->u.oa, key, value);
 }
 
-void hashmap_free(hashmap *m) {
-    free(m->entries);
-    m->entries    = NULL;
-    m->capacity   = 0;
-    m->count      = 0;
-    m->tombstones = 0;
+void *stk_hashmap_get(const stk_hashmap *m, const void *key) {
+    if (m == NULL) return NULL;
+    if (m->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chainmap_get(&m->u.chain, key);
+    return stk_i_oamap_get(&m->u.oa, key);
 }
 
-void hashmap_set(hashmap *m, void *key, void *value) {
-    if ((double)(m->count + m->tombstones + 1) / (double)m->capacity > 0.7) {
-        if (!hashmap_grow(m, m->capacity * 2)) return;
-    }
-    size_t idx = hashmap_probe(m, key);
-    if (m->entries[idx].occupied) {
-        m->entries[idx].value = value;
-        return;
-    }
-    m->entries[idx].key      = key;
-    m->entries[idx].value    = value;
-    m->entries[idx].occupied = true;
-    m->entries[idx].tombstone = false;
-    m->count++;
+int stk_hashmap_remove(stk_hashmap *m, const void *key) {
+    if (m == NULL) return 0;
+    if (m->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chainmap_remove(&m->u.chain, key);
+    return stk_i_oamap_remove(&m->u.oa, key);
 }
 
-void *hashmap_get(const hashmap *m, const void *key) {
-    size_t idx = hashmap_probe(m, key);
-    return m->entries[idx].occupied ? m->entries[idx].value : NULL;
+void stk_hashmap_clear(stk_hashmap *m) {
+    if (m == NULL) return;
+    if (m->mode == STK_HASHMAP_CHAIN)
+        stk_i_chainmap_clear(&m->u.chain);
+    else
+        stk_i_oamap_clear(&m->u.oa);
 }
 
-bool hashmap_has(const hashmap *m, const void *key) {
-    size_t idx = hashmap_probe(m, key);
-    return m->entries[idx].occupied;
+size_t stk_hashmap_size(const stk_hashmap *m) {
+    if (m == NULL) return 0;
+    if (m->mode == STK_HASHMAP_CHAIN)
+        return m->u.chain.count;
+    return m->u.oa.count;
 }
 
-void *hashmap_remove(hashmap *m, const void *key) {
-    size_t idx = hashmap_probe(m, key);
-    if (!m->entries[idx].occupied) return NULL;
-    void *val = m->entries[idx].value;
-    m->entries[idx].occupied  = false;
-    m->entries[idx].tombstone = true;
-    m->count--;
-    m->tombstones++;
-    return val;
+int stk_hashmap_reserve(stk_hashmap *m, size_t new_capacity) {
+    if (m == NULL) return 0;
+    if (m->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chainmap_reserve(&m->u.chain, new_capacity);
+    return stk_i_oamap_reserve(&m->u.oa, new_capacity);
 }
 
-void hashmap_clear(hashmap *m) {
-    memset(m->entries, 0, m->capacity * sizeof(hashmap_entry));
-    m->count      = 0;
-    m->tombstones = 0;
+void stk_hashmap_iter_begin(stk_hashmap_iter *it, const stk_hashmap *m) {
+    if (it == NULL || m == NULL) return;
+    it->mode = m->mode;
+    if (m->mode == STK_HASHMAP_CHAIN)
+        stk_i_chain_iter_begin(&it->u.chain, &m->u.chain);
+    else
+        stk_i_oa_iter_begin(&it->u.oa, &m->u.oa);
 }
 
-void hashmap_foreach(const hashmap *m,
-                     bool (*fn)(void *key, void *value, void *ud), void *ud) {
-    for (size_t i = 0; i < m->capacity; i++) {
-        if (m->entries[i].occupied) {
-            if (!fn(m->entries[i].key, m->entries[i].value, ud))
-                break;
-        }
-    }
+int stk_hashmap_iter_next(stk_hashmap_iter *it) {
+    if (it == NULL) return 0;
+    if (it->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chain_iter_next(&it->u.chain);
+    return stk_i_oa_iter_next(&it->u.oa);
 }
 
-size_t hashmap_count(const hashmap *m)     { return m->count; }
-size_t hashmap_capacity(const hashmap *m)  { return m->capacity; }
-double hashmap_load_factor(const hashmap *m) {
-    return m->capacity ? (double)m->count / (double)m->capacity : 0.0;
+void *stk_hashmap_iter_key(const stk_hashmap_iter *it) {
+    if (it == NULL) return NULL;
+    if (it->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chain_iter_key(&it->u.chain);
+    return stk_i_oa_iter_key(&it->u.oa);
+}
+
+void *stk_hashmap_iter_value(const stk_hashmap_iter *it) {
+    if (it == NULL) return NULL;
+    if (it->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chain_iter_value(&it->u.chain);
+    return stk_i_oa_iter_value(&it->u.oa);
+}
+
+int stk_hashmap_iter_remove(stk_hashmap_iter *it) {
+    if (it == NULL) return 0;
+    if (it->mode == STK_HASHMAP_CHAIN)
+        return stk_i_chain_iter_remove(&it->u.chain);
+    return stk_i_oa_iter_remove(&it->u.oa);
 }

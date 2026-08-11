@@ -1,25 +1,42 @@
-# InfraConfig.cmake.in - Package configuration template (generated at install time)
-# Defines imported targets and convenience variables for find_package(Infra)
+# [file name]: InfraConfig.cmake.in
+# [file content begin]
+# InfraConfig.cmake.in - 包配置模板（安装时生成）
+# 为 find_package(Infra) 定义导入目标和便利变量
 
-@PACKAGE_INIT@
+@PACKAGE_INIT@  # 包含 CMake 包初始化宏
 
+# 获取 Infra CMake 模块目录的绝对路径
 get_filename_component(INFRA_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+# 将模块目录添加到 CMake 模块搜索路径
 list(APPEND CMAKE_MODULE_PATH ${INFRA_CMAKE_DIR})
 
-# Import all installed targets
+# 导入所有已安装的目标
 include("${INFRA_CMAKE_DIR}/infra-targets.cmake" OPTIONAL)
 
-# Set version and include paths
+if(EXISTS "${INFRA_CMAKE_DIR}/infra-targets.cmake")
+    message(STATUS "[Infra] Loaded infra-targets.cmake")
+else()
+    message(STATUS "[Infra] infra-targets.cmake not found (optional)")
+endif()
+
+# 设置版本和包含路径
 set(INFRA_VERSION "@INFRA_VERSION_STRING@")
 set(INFRA_INCLUDE_DIRS "@PACKAGE_INFRA_INCLUDE_DIR@")
 
-# Collect all module libraries
+# 收集所有模块库
 set(INFRA_LIBRARIES "")
 foreach(MODULE @INFRA_MODULES@)
     if(TARGET infra::${MODULE})
         list(APPEND INFRA_LIBRARIES infra::${MODULE})
+        message(STATUS "[Infra] Found module: ${MODULE}")
+    else()
+        message(STATUS "[Infra] Module not found: ${MODULE}")
     endif()
 endforeach()
 
-# Verify required components
+if(NOT INFRA_LIBRARIES)
+    message(STATUS "[Infra] No modules found")
+endif()
+
+# 验证所需组件
 check_required_components(infra)

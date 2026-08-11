@@ -1,68 +1,75 @@
-#ifndef STK_VECTOR_CXX_H
-#define STK_VECTOR_CXX_H
+#ifndef STK_CORE_CXX_VECTOR_H
+#define STK_CORE_CXX_VECTOR_H
 
-#pragma once
-
-#include <initializer_list>
 #include <cstddef>
+#include <initializer_list>
 
 namespace stk {
 
-		template<typename T>
-		class vector
-		{
-		public:
-			vector();
-			explicit vector(size_t _size);
-			vector(std::initializer_list<T> _list);
+template <typename T>
+class vector {
+public:
+    // 构造 / 析构
+    vector();
+    explicit vector(std::size_t size);
+    vector(std::initializer_list<T> list);
 
-			vector(const vector& _other);
-			vector(vector&& _other) noexcept;
+    vector(const vector& other);
+    vector(vector&& other) noexcept;
 
-			~vector();
+    ~vector();
 
-			vector& operator=(const vector& _other);
-			vector& operator=(vector&& _other) noexcept;
+    // 赋值
+    vector& operator=(const vector& other);
+    vector& operator=(vector&& other) noexcept;
 
-			T operator[](size_t _index) const;
-			T& operator[](size_t _index);
+    // 元素访问
+    T operator[](std::size_t index) const;
+    T& operator[](std::size_t index);
 
-			vector operator+(const vector& _other) const;
-			vector operator-(const vector& _other) const;
-			vector operator*(T _scalar) const;
+    // 算术运算
+    vector operator+(const vector& other) const;
+    vector operator-(const vector& other) const;
+    vector operator*(T scalar) const;
 
-			template<typename U>
-			friend vector<U> operator*(U _scalar, const vector<U>& _vec);
+    template <typename U>
+    friend vector<U> operator*(U scalar, const vector<U>& vec);
 
-			vector& operator+=(const vector& _other);
-			vector& operator-=(const vector& _other);
-			vector& operator*=(T _scalar);
+    vector& operator+=(const vector& other);
+    vector& operator-=(const vector& other);
+    vector& operator*=(T scalar);
 
-			size_t size() const;
-			void resize(size_t _size);
-			void normalize();
-			T norm() const;
-			T dot(const vector& _other) const;
+    // 容量
+    std::size_t size() const;
+    void resize(std::size_t new_size);
 
-			void fill(T _value);
-			const T* data() const;
+    // 运算
+    void normalize();
+    T norm() const;
+    T dot(const vector& other) const;
 
-			static vector zeros(size_t _size);
-			static vector ones(size_t _size);
-			static vector random(size_t _size, T _min = 0.0, T _max = 1.0);
+    // 工具
+    void fill(T value);
+    const T* data() const;
 
-		private:
-			T* data_;
-			size_t size_;
-		};
+    // 静态工厂
+    static vector zeros(std::size_t size);
+    static vector ones(std::size_t size);
+    static vector random(std::size_t size, T min = 0.0, T max = 1.0);
 
-		template<typename T>
-		inline vector<T> operator*(T _scalar, const vector<T>& _vec)
-		{
-			return _vec * _scalar;
-		}
+private:
+    T* data_ = nullptr;
+    std::size_t size_ = 0;
+};
+
+template <typename T>
+inline vector<T> operator*(T scalar, const vector<T>& vec)
+{
+    return vec * scalar;
 }
 
-#include "stk_core_vector.tcc"
+} // namespace stk
 
-#endif
+#include "vector.tcc"
+
+#endif // STK_CORE_CXX_VECTOR_H

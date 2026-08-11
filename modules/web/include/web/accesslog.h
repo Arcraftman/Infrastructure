@@ -20,9 +20,9 @@ typedef struct web_accesslog web_accesslog_t;
 
 /** Log format type. */
 typedef enum web_accesslog_format {
-    WEB_ACCESSLOG_CLF,       /**< Apache Common Log Format */
-    WEB_ACCESSLOG_COMBINED,  /**< Apache Combined Log Format (with Referer + User-Agent) */
-    WEB_ACCESSLOG_JSON       /**< JSON line format */
+    WEB_ACCESSLOG_CLF,      /**< Apache Common Log Format */
+    WEB_ACCESSLOG_COMBINED, /**< Apache Combined Log Format (with Referer + User-Agent) */
+    WEB_ACCESSLOG_JSON      /**< JSON line format */
 } web_accesslog_format_t;
 
 /**
@@ -31,8 +31,7 @@ typedef enum web_accesslog_format {
  * @param format Log format.
  * @return New access log writer, or NULL on error.
  */
-WEB_API web_accesslog_t *
-web_accesslog_create(const char *path, web_accesslog_format_t format);
+WEB_API web_accesslog_t* web_accesslog_create(const char* path, web_accesslog_format_t format);
 
 /**
  * Log a single request/response.
@@ -45,24 +44,23 @@ web_accesslog_create(const char *path, web_accesslog_format_t format);
  * @param ms      Request handling time in milliseconds.
  * @return 0 on success, -1 on error.
  */
-WEB_API int
-web_accesslog_log(web_accesslog_t *log,
-                   const web_request_t *req,
-                   const web_response_t *resp,
-                   int status, size_t bytes,
-                   const char *remote, long ms);
+WEB_API int web_accesslog_log(web_accesslog_t* log,
+                              const web_request_t* req,
+                              const web_response_t* resp,
+                              int status,
+                              size_t bytes,
+                              const char* remote,
+                              long ms);
 
 /**
  * Flush buffered log entries to disk.
  */
-WEB_API int
-web_accesslog_flush(web_accesslog_t *log);
+WEB_API int web_accesslog_flush(web_accesslog_t* log);
 
 /**
  * Destroy the access log writer and flush remaining entries.
  */
-WEB_API void
-web_accesslog_destroy(web_accesslog_t *log);
+WEB_API void web_accesslog_destroy(web_accesslog_t* log);
 
 #ifdef __cplusplus
 }

@@ -1,65 +1,122 @@
-#ifndef STK_RBTREE_CXX_H
-#define STK_RBTREE_CXX_H
+#ifndef STK_CORE_CXX_RBTREE_H
+#define STK_CORE_CXX_RBTREE_H
 
 #include <cstddef>
+#include <utility>
 
 namespace stk {
 
-		enum class Color {
-			RED,
-			BLACK
-		};
+// ============================================================================
+// 红黑树
+// ============================================================================
 
-		template<typename T>
-		struct rbnode
-		{
-			T data_;
-			Color color_;
-			rbnode* left_;
-			rbnode* right_;
-			rbnode* parent_;
+template <typename T>
+class rbtree {
+public:
+    rbtree();
+    ~rbtree();
 
-			rbnode(const T& data) :
-				data_(data),
-				color_(Color::RED),
-				left_(nullptr),
-				right_(nullptr),
-				parent_(nullptr) {}
-		};
+    bool empty() const noexcept;
+    std::size_t size() const noexcept;
 
-		template<typename T>
-		class rbtree
-		{
-		public:
-			rbtree();
-			~rbtree();
+    void insert(const T& value);
+    bool erase(const T& value);
+    void clear();
 
-			void insert(const T& value);
-			void remove(const T& value);
-			bool find(const T& value) const;
-			bool isEmpty() const;
-			void inorderPrint() const;
+    bool contains(const T& value) const;
+    const T* find(const T& value) const;
 
-		private:
-			void leftRotate(rbnode<T>* x);
-			void rightRotate(rbnode<T>* y);
-			void fixInsert(rbnode<T>* z);
-			void fixDelete(rbnode<T>* x);
-			void transplant(rbnode<T>* u, rbnode<T>* v);
-			rbnode<T>* minimum(rbnode<T>* x) const;
-			rbnode<T>* maximum(rbnode<T>* x) const;
-			rbnode<T>* searchNode(const T& value) const;
-			void clearHelper(rbnode<T>* node);
-			void inorderHelper(rbnode<T>* node) const;
+    const T* min() const;
+    const T* max() const;
 
-		private:
-			rbnode<T>* root_;
-			rbnode<T>* nil_;
+    // ========================================================================
+    // 内部节点类型（声明在 iterator 之前，使其成员 node* 可见）
+    // ========================================================================
 
-		};
+    enum class color : bool { red = false, black = true };
 
-} 
+    struct node {
+        T data_;
+        color color_ = color::red;
+        node* left_ = nullptr;
+        node* right_ = nullptr;
+        node* parent_ = nullptr;
 
-#include "stk_core_rbtree.tcc"
+        explicit node(const T& data) : data_(data)
+        {
+        }
+        explicit node(T&& data) : data_(std::move(data))
+        {
+        }
+        node() : color_(color::black)
+        {
+        }
+    };
 
-#endif 
+    // ========================================================================
+    // 迭代器
+    // ========================================================================
+
+    class iterator {
+    public:
+        iterator() = default;
+
+        T& operator*() const
+        {
+            return node_->data_;
+        }
+        T* operator->() const
+        {
+            return &node_->data_;
+        }
+
+        iterator& operator++();
+        iterator operator++(int);
+
+        bool operator==(const iterator& other) const
+        {
+            return node_ == other.node_;
+        }
+        bool operator!=(const iterator& other) const
+        {
+            return node_ != other.node_;
+        }
+
+    private:
+        friend class rbtree;
+
+        node* node_ = nullptr;
+        const rbtree* tree_ = nullptr;
+
+        iterator(node* n, const rbtree* t) : node_(n), tree_(t)
+        {
+        }
+    };
+
+    iterator begin() noexcept;
+    iterator end() noexcept;
+
+private:
+    // ========================================================================
+    // 内部实现
+    // ========================================================================
+
+    node* root_ = nullptr;
+    node* nil_ = nullptr;
+    std::size_t size_ = 0;
+
+    void left_rotate(node* x);
+    void right_rotate(node* y);
+    void insert_fixup(node* z);
+    void erase_fixup(node* x);
+    void transplant(node* u, node* v);
+    node* minimum(node* x) const;
+    node* search(const T& value) const;
+    void clear_subtree(node* n);
+};
+
+} // namespace stk
+
+#include "rbtree.tcc"
+
+#endif

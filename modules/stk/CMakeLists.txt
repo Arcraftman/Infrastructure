@@ -1,57 +1,236 @@
-# modules/stk/CMakeLists.txt
+# ============================================================================
+# STK 模块构建配置
+# ============================================================================
+# 功能：配置 STK（标准工具包）模块的构建选项和组件
+# 
+# 组件结构：
+#   - core   : 核心数据结构（向量、链表、红黑树、字符串等）
+#   - utils  : 工具组件（日志、其他实用功能）
+#
+# 可选功能（通过 CMake 选项控制）：
+#   INFRA_STK_ENABLE_CORE                - 启用核心组件
+#   INFRA_STK_ENABLE_UTILS               - 启用工具组件
+#   INFRA_STK_CORE_ENABLE_VECTOR         - 启用动态数组
+#   INFRA_STK_CORE_ENABLE_LIST           - 启用双向链表
+#   INFRA_STK_CORE_ENABLE_SLIST          - 启用单向链表
+#   INFRA_STK_CORE_ENABLE_RBTREE         - 启用红黑树
+#   INFRA_STK_CORE_ENABLE_STRING         - 启用字符串
+#   INFRA_STK_CORE_ENABLE_ARENA          - 启用竞技场分配器
+#   INFRA_STK_CORE_ENABLE_BUFFER         - 启用缓冲区
+#   INFRA_STK_CORE_ENABLE_HASHMAP        - 启用哈希映射
+#   INFRA_STK_CORE_ENABLE_SET            - 启用集合
+#   INFRA_STK_CORE_ENABLE_POOL           - 启用对象池
+#   INFRA_STK_CORE_ENABLE_HEAP           - 启用堆
+#   INFRA_STK_CORE_ENABLE_BITSET         - 启用位集
+#   INFRA_STK_CORE_ENABLE_STACK          - 启用栈
+#   INFRA_STK_CORE_ENABLE_QUEUE          - 启用队列
+#   INFRA_STK_CORE_ENABLE_DEQUE          - 启用双端队列
+#   INFRA_STK_CORE_ENABLE_RINGBUF        - 启用环形缓冲区
+#   INFRA_STK_CORE_ENABLE_UF             - 启用并查集
+#   INFRA_BUILD_TESTS                    - 构建测试
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 初始化模块
+# ----------------------------------------------------------------------------
+# 注册模块、设置目录变量、配置输出目录
 infra_init_module(stk)
 
+# ============================================================================
+# 核心组件 (Core Component)
+# ============================================================================
+# 提供基础数据结构和内存管理功能
+# ============================================================================
 if(INFRA_STK_ENABLE_CORE)
+    
+    # 收集核心组件的源文件
     set(CORE_SOURCES "")
 
+    # 动态数组 - 泛型向量实现
     if(INFRA_STK_CORE_ENABLE_VECTOR)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/vector.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_LIST)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/list.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_RBTREE)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/rbtree.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_STRING)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/str.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_ARENA)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/arena.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_BUFFER)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/buffer.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_HASHMAP)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/hashmap.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_POOL)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/pool.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_HEAP)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/heap.c)
-    endif()
-    if(INFRA_STK_CORE_ENABLE_BITSET)
-        list(APPEND CORE_SOURCES ${INFRA_MODULE_STK_SRC_DIR}/core/bitset.c)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/vector.c
+        )
     endif()
     
-    infra_register_component(stk core SOURCES ${CORE_SOURCES}
-        PRIVATE_DIRS ${INFRA_MODULE_STK_SRC_DIR}/core
+    # 双向链表 - 通用链表实现
+    if(INFRA_STK_CORE_ENABLE_LIST)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/list.c
+        )
+    endif()
+    
+    # 单向链表 - 轻量级链表实现
+    if(INFRA_STK_CORE_ENABLE_SLIST)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/slist.c
+        )
+    endif()
+    
+    # 红黑树 - 自平衡二叉搜索树
+    if(INFRA_STK_CORE_ENABLE_RBTREE)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/rbtree.c
+        )
+    endif()
+    
+    # 字符串 - 动态字符串操作
+    if(INFRA_STK_CORE_ENABLE_STRING)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/str.c
+        )
+    endif()
+    
+    # 竞技场分配器 - 线性内存分配器
+    if(INFRA_STK_CORE_ENABLE_ARENA)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/arena.c
+        )
+    endif()
+    
+    # 缓冲区 - 自动增长的字节缓冲区
+    if(INFRA_STK_CORE_ENABLE_BUFFER)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/buffer.c
+        )
+    endif()
+    
+    # 哈希映射 - 开放寻址哈希表
+    if(INFRA_STK_CORE_ENABLE_HASHMAP)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/hashmap.c
+            ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hash_impl.c
+            ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hashmap_allocator_impl.c
+            ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hashmap_chainmap_impl.c
+            ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hashmap_oamap_impl.c
+        )
+    endif()
+    
+    # 集合 - 基于哈希表的集合实现
+    if(INFRA_STK_CORE_ENABLE_SET)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/set.c
+        )
+    endif()
+    
+    # 对象池 - 固定大小的对象分配器
+    if(INFRA_STK_CORE_ENABLE_POOL)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/pool.c
+        )
+    endif()
+    
+    # 堆 - 二叉堆优先级队列
+    if(INFRA_STK_CORE_ENABLE_HEAP)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/heap.c
+        )
+    endif()
+    
+    # 位集 - 固定大小位数组
+    if(INFRA_STK_CORE_ENABLE_BITSET)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/bitset.c
+        )
+    endif()
+    
+    # 栈 - LIFO 数据结构
+    if(INFRA_STK_CORE_ENABLE_STACK)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/stack.c
+        )
+    endif()
+    
+    # 队列 - FIFO 数据结构
+    if(INFRA_STK_CORE_ENABLE_QUEUE)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/queue.c
+        )
+    endif()
+    
+    # 双端队列 - 双端操作的数据结构
+    if(INFRA_STK_CORE_ENABLE_DEQUE)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/deque.c
+        )
+    endif()
+    
+    # 环形缓冲区 - 固定大小循环缓冲区
+    if(INFRA_STK_CORE_ENABLE_RINGBUF)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/ringbuf.c
+        )
+    endif()
+    
+    # 并查集 - 不相交集合数据结构
+    if(INFRA_STK_CORE_ENABLE_UF)
+        list(APPEND CORE_SOURCES 
+            ${INFRA_MODULE_STK_SRC_DIR}/core/uf.c
+        )
+    endif()
+    
+    # 注册核心组件
+    # 将编译生成的 .o 文件收集到模块对象列表中
+    infra_register_component(stk core 
+        SOURCES ${CORE_SOURCES}
+        PRIVATE_DIRS ${INFRA_MODULE_STK_INC_DIR}
     )
+    
 endif()
 
+# ============================================================================
+# C++ 模板组件 (仅当 INFRA_STK_ENABLE_CXX=ON 时编译)
+# ============================================================================
+# stk 的 C++ 部分（vector/string/rbtree 模板）默认不编译，因为模块主体为 C。
+# 开启后通过 cpp_stub.cpp 显式实例化模板，确保模板可被编译器接受。
+if(INFRA_STK_ENABLE_CXX)
+    set(CPP_SOURCES
+        ${INFRA_MODULE_STK_SRC_DIR}/core/cpp_stub.cpp
+    )
+    infra_register_component(stk cpp
+        SOURCES ${CPP_SOURCES}
+        PRIVATE_DIRS ${INFRA_MODULE_STK_INC_DIR}
+    )
+    infra_info("stk C++ templates enabled (INFRA_STK_ENABLE_CXX=ON)")
+endif()
+
+# ============================================================================
+# 工具组件 (Utils Component)
+# ============================================================================
+# 提供日志、辅助函数等实用工具
+# ============================================================================
 if(INFRA_STK_ENABLE_UTILS)
+    
+    # 工具组件源文件列表
     set(UTIL_SOURCES
-        ${INFRA_MODULE_STK_SRC_DIR}/utils/util.c
-        ${INFRA_MODULE_STK_SRC_DIR}/utils/logger.c
+        ${INFRA_MODULE_STK_SRC_DIR}/utils/other.c      # 其他实用函数
+        ${INFRA_MODULE_STK_SRC_DIR}/utils/logger.c     # 日志系统
+        ${INFRA_MODULE_STK_SRC_DIR}/utils/status.c     # 状态码
     )
-    infra_register_component(stk utils SOURCES ${UTIL_SOURCES}
-        PRIVATE_DIRS ${INFRA_MODULE_STK_SRC_DIR}/utils
+    
+    # 注册工具组件
+    infra_register_component(stk utils 
+        SOURCES ${UTIL_SOURCES}
+        PRIVATE_DIRS ${INFRA_MODULE_STK_INC_DIR}
     )
+    
 endif()
 
+# ----------------------------------------------------------------------------
+# 完成模块组装
+# ----------------------------------------------------------------------------
+# 将所有组件对象链接成最终的库文件（共享库或静态库）
 infra_finalize_module(stk)
 
-if(INFRA_BUILD_TESTS)
+# ----------------------------------------------------------------------------
+# 测试子目录
+# ----------------------------------------------------------------------------
+# 如果需要构建测试，包含 tests 子目录
+if(INFRA_BUILD_TESTS AND EXISTS "${INFRA_MODULE_STK_ROOT_DIR}/tests/CMakeLists.txt")
     add_subdirectory(tests)
+endif()
+
+set(STK_EXAMPLES_CMAKE "${INFRA_MODULE_STK_ROOT_DIR}/examples/CMakeLists.txt")
+if(INFRA_BUILD_EXAMPLES AND EXISTS "${STK_EXAMPLES_CMAKE}")
+    add_subdirectory("${INFRA_MODULE_STK_ROOT_DIR}/examples" "${CMAKE_CURRENT_BINARY_DIR}/examples")
 endif()

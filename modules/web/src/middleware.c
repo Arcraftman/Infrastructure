@@ -3,137 +3,117 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* =========================================================================
- * Middleware chain
- * ========================================================================= */
+typedef struct web_middleware_entry {
+    web_middleware_fn fn;
+    void* userdata;
+    web_middleware_dtor_fn dtor;
+} web_middleware_entry_t;
 
-struct web_middleware_chain {
-    web_middleware_t    **entries;   /* array of entries */
-    size_t                count;
-    size_t                capacity;
+typedef struct web_middleware_value {
+    char* key;
+    void* value;
+    struct web_middleware_value* next;
+} web_middleware_value_t;
+
+struct web_middleware {
+    web_middleware_entry_t* entries;
+    size_t count;
+    size_t capacity;
 };
 
-/* =========================================================================
- * Create chain
- * ========================================================================= */
+struct web_middleware_ctx {
+    web_middleware_value_t* values;
+};
 
-WEB_API web_middleware_chain_t *
-web_middleware_chain_create(void)
+WEB_API web_middleware_t* web_middleware_create(void)
 {
-    web_middleware_chain_t *chain =
-        (web_middleware_chain_t *)calloc(1, sizeof(*chain));
-    if (!chain) return NULL;
-    chain->capacity = 8;
-    chain->entries = (web_middleware_t **)malloc(
-        chain->capacity * sizeof(web_middleware_t *));
-    if (!chain->entries) { free(chain); return NULL; }
-    return chain;
+    web_middleware_t* mw = (web_middleware_t*)calloc(1, sizeof(*mw));
+    if (!mw)
+        return NULL;
+
+    mw->capacity = 8;
+    mw->entries = (web_middleware_entry_t*)calloc(mw->capacity, sizeof(*mw->entries));
+    if (!mw->entries) {
+        free(mw);
+        return NULL;
+    }
+    return mw;
 }
 
-/* =========================================================================
- * Add middleware
- * ========================================================================= */
-
-WEB_API int
-web_middleware_use(web_middleware_chain_t *chain,
-                   web_middleware_t *middleware)
+WEB_API int web_middleware_use(web_middleware_t* mw,
+                               web_middleware_fn fn,
+                               void* userdata,
+                               web_middleware_dtor_fn dtor)
 {
-    if (!chain || !middleware) return -1;
+    if (!mw || !fn)
+        return -1;
 
-    if (chain->count >= chain->capacity) {
-        size_t new_cap = chain->capacity * 2;
-        web_middleware_t **tmp = (web_middleware_t **)realloc(
-            chain->entries, new_cap * sizeof(web_middleware_t *));
-        if (!tmp) return -1;
-        chain->entries  = tmp;
-        chain->capacity = new_cap;
+    if (mw->count == mw->capacity) {
+        size_t new_capacity = mw->capacity * 2;
+        web_middleware_entry_t* entries = (web_middleware_entry_t*)realloc(
+            mw->entries, new_capacity * sizeof(*entries));
+        if (!entries)
+            return -1;
+        mw->entries = entries;
+        mw->capacity = new_capacity;
     }
 
-    chain->entries[chain->count++] = middleware;
+    mw->entries[mw->count++] = (web_middleware_entry_t){fn, userdata, dtor};
     return 0;
 }
 
-/* =========================================================================
- * Execute chain
- * ========================================================================= */
-
-WEB_API int
-web_middleware_execute(web_middleware_chain_t *chain,
-                       web_request_t *req, web_response_t *resp,
-                       web_route_handler route_handler,
-                       void *route_ctx)
+WEB_API int web_middleware_ctx_set(web_middleware_ctx_t* ctx, const char* key, void* value)
 {
-    if (!chain || !req || !resp) return -1;
+    web_middleware_value_t* item;
 
-    /* Build a simple recursive on-stack execution */
-    /* We'll call middleware entries one by one, each can call "next" */
-    /* Define a "next" function pointer type internally. */
-    typedef int (*mw_next_t)(int idx, web_request_t *req,
-                             web_response_t *resp, void *ctx);
+    if (!ctx || !key || key[0] == '\0')
+        return -1;
 
-    /* We allocate a small struct on the heap to capture chain + handler */
-    struct exec_ctx {
-        web_middleware_chain_t *chain;
-        web_route_handler       handler;
-        void                   *handler_ctx;
-    };
-
-    /* Build the next-callback logic */
-    /* The closure captures: which index we're at */
-    /* We'll implement via a simple loop with a "skip_to_handler" flag */
-    int idx = 0;
-    while (idx < (int)chain->count) {
-        web_middleware_t *mw = chain->entries[idx];
-        if (!mw) { idx++; continue; }
-
-        /* "skip" flag */
-        int skip = 0;
-
-        /* The middleware decides whether to call "next" */
-        /* We'll wrap this: each middleware calls next() by returning a specific int */
-        /* Simpler approach: middleware returns:
-         *   WEB_MW_NEXT    → continue chain
-         *   WEB_MW_STOP    → stop chain, run route handler
-         *   WEB_MW_ERROR   → abort with error
-         *   WEB_MW_DONE    → response already written, stop
-         */
-        int mw_action = mw(req, resp);
-
-        switch (mw_action) {
-            case WEB_MW_NEXT:
-                idx++;
-                break;
-            case WEB_MW_STOP:
-                /* skip remaining middleware and run route handler */
-                if (chain->next_handler)
-                    return chain->next_handler(req, resp);
-                return 0;
-            case WEB_MW_DONE:
-                return 0; /* middleware wrote the response */
-            case WEB_MW_ERROR:
-                return -1;
-            default:
-                /* unknown return, treat as NEXT for forward-compat */
-                idx++;
-                break;
+    for (item = ctx->values; item; item = item->next) {
+        if (strcmp(item->key, key) == 0) {
+            item->value = value;
+            return 0;
         }
     }
 
-    /* All middleware passed; run the route handler if any */
-    if (route_handler)
-        return route_handler(req, resp, route_ctx);
-
+    item = (web_middleware_value_t*)calloc(1, sizeof(*item));
+    if (!item)
+        return -1;
+    item->key = (char*)malloc(strlen(key) + 1);
+    if (!item->key) {
+        free(item);
+        return -1;
+    }
+    strcpy(item->key, key);
+    item->value = value;
+    item->next = ctx->values;
+    ctx->values = item;
     return 0;
 }
 
-/* =========================================================================
- * Destroy
- * ========================================================================= */
-
-WEB_API void
-web_middleware_chain_destroy(web_middleware_chain_t *chain)
+WEB_API void* web_middleware_ctx_get(const web_middleware_ctx_t* ctx, const char* key)
 {
-    if (!chain) return;
-    free(chain->entries);
-    free(chain);
+    web_middleware_value_t* item;
+
+    if (!ctx || !key)
+        return NULL;
+    for (item = ctx->values; item; item = item->next) {
+        if (strcmp(item->key, key) == 0)
+            return item->value;
+    }
+    return NULL;
+}
+
+WEB_API void web_middleware_destroy(web_middleware_t* mw)
+{
+    size_t i;
+
+    if (!mw)
+        return;
+    for (i = 0; i < mw->count; ++i) {
+        if (mw->entries[i].dtor)
+            mw->entries[i].dtor(mw->entries[i].userdata);
+    }
+    free(mw->entries);
+    free(mw);
 }
