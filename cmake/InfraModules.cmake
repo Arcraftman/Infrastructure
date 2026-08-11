@@ -1,225 +1,361 @@
-# InfraModules.cmake - Module registration and build pipeline
+# [file name]: InfraModules.cmake
+# [file content begin]
+# InfraModules.cmake - 模块注册与构建流程
 #
-# Defines the module lifecycle: register → init → register_component →
-# finalize → add_module. Each module lives under modules/${MODULE_NAME}
-# with its own CMakeLists.txt.
+# 定义模块生命周期：注册 → 初始化 → 注册组件 → 完成 → 添加模块
+# 每个模块位于 modules/${MODULE_NAME} 目录下，包含自己的 CMakeLists.txt
 #
-# MACROS:
-#   infra_register_module(NAME)       - Register a module name in the global list
-#   infra_init_module(NAME)           - Full init: register + dir setup + output
-#   infra_register_component(...)     - Add an object library component to a module
-#   infra_finalize_module(NAME)       - Assemble module library from components
-#   infra_add_module(NAME)            - conditionally include a module subdirectory
+# 宏说明：
+#   infra_register_module(NAME)       - 在全局列表中注册模块名称
+#   infra_init_module(NAME)           - 完整初始化：注册 + 目录设置 + 输出目录
+#   infra_register_component(...)     - 向模块添加源文件（直接添加到最终库）
+#   infra_finalize_module(NAME)       - 创建最终的模块库
+#   infra_add_module(NAME)            - 条件性地包含模块子目录
 #
-# GLOBAL STATE:
-#   INFRA_REGISTERED_MODULES          - List of all registered module names
-#   INFRA_MODULE_${NAME}_OBJECTS      - Object files collected for the module
-#   INFRA_MODULE_${NAME}_LINK_LIBS    - Link libraries for the module
+# 全局状态变量：
+#   INFRA_REGISTERED_MODULES          - 所有已注册模块名称的列表
+#   INFRA_MODULE_${NAME}_SOURCES      - 为模块收集的源文件列表
+#   INFRA_MODULE_${NAME}_LINK_LIBS    - 模块的链接库
+#   INFRA_MODULE_${NAME}_INCLUDE_DIRS - 模块的头文件目录
+#   INFRA_MODULE_${NAME}_COMPILE_DEFS - 模块的编译宏定义
 #
-# OPTIONS USED: INFRA_ENABLE_{MODULE_UPPER}
-# DEPENDENCY: InfraUtils, InfraCompiler
-# PLATFORM: Cross-platform
+# 使用的选项：INFRA_ENABLE_{MODULE_UPPER}
+# 依赖：InfraUtils, InfraCompiler
+# 平台：跨平台
 
+# 防止重复包含
 if(DEFINED INFRA_MODULES_INCLUDED)
     return()
+else()
+    set(INFRA_MODULES_INCLUDED TRUE)
 endif()
-set(INFRA_MODULES_INCLUDED TRUE)
 
+# 包含依赖的工具模块
 include(InfraUtils)
 include(InfraCompiler)
 
-# Global state
+# ============================================================================
+# 全局状态初始化
+# ============================================================================
+# 存储所有已注册的模块名称列表
 set(INFRA_REGISTERED_MODULES "")
+# 标记输出目录是否已设置（避免重复设置）
 set(INFRA_OUTPUT_DIRECTORIES_SET FALSE)
 
-# ---------------------------------------------------------------------------
-# Output directories
-# ---------------------------------------------------------------------------
+# ============================================================================
+# 输出目录设置
+# ============================================================================
+# 功能：设置项目的输出目录（bin、lib等）
+# 说明：使用标志位确保只执行一次，避免多个模块重复设置
+# ============================================================================
 macro(infra_setup_output_dirs)
     if(INFRA_OUTPUT_DIRECTORIES_SET)
+        infra_debug("Output directories already set, skipping")
         return()
+    else()
+        # 调用 InfraUtils 中的函数设置输出目录
+        infra_set_output_dirs()
+        set(INFRA_OUTPUT_DIRECTORIES_SET TRUE)
+        infra_debug("Output directories set")
     endif()
-    infra_set_output_dirs()
-    set(INFRA_OUTPUT_DIRECTORIES_SET TRUE)
 endmacro()
 
-# ---------------------------------------------------------------------------
-# Module directory setup
-# ---------------------------------------------------------------------------
+# ============================================================================
+# 模块目录设置
+# ============================================================================
+# 功能：为指定模块设置源代码目录、头文件目录等路径变量
+# 参数：
+#   MODULE_NAME - 模块名称
+# 输出的变量：
+#   INFRA_MODULE_${_MODULE}_ROOT_DIR - 模块根目录
+#   INFRA_MODULE_${_MODULE}_INC_DIR  - 模块头文件目录（include/）
+#   INFRA_MODULE_${_MODULE}_SRC_DIR  - 模块源代码目录（src/）
+# ============================================================================
 macro(infra_setup_module_dirs MODULE_NAME)
+    # 将模块名转换为大写，用于变量命名（如 stk -> STK）
     string(TOUPPER ${MODULE_NAME} _MODULE)
+    # 设置模块根目录为当前 CMakeLists.txt 所在目录
     set(INFRA_MODULE_${_MODULE}_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+    # 设置头文件目录：根目录下的 include 文件夹
     set(INFRA_MODULE_${_MODULE}_INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    # 设置源代码目录：根目录下的 src 文件夹
     set(INFRA_MODULE_${_MODULE}_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    
+    infra_debug("Module ${MODULE_NAME} directories set:")
+    infra_debug("  ROOT: ${INFRA_MODULE_${_MODULE}_ROOT_DIR}")
+    infra_debug("  INC:  ${INFRA_MODULE_${_MODULE}_INC_DIR}")
+    infra_debug("  SRC:  ${INFRA_MODULE_${_MODULE}_SRC_DIR}")
 endmacro()
 
-# ---------------------------------------------------------------------------
-# Module registration
-# ---------------------------------------------------------------------------
+# ============================================================================
+# 模块注册
+# ============================================================================
+# 功能：将模块名称注册到全局列表中，并初始化该模块的状态变量
+# 参数：
+#   MODULE_NAME - 模块名称
+# 说明：
+#   - 避免重复注册相同的模块
+#   - 为模块初始化空的源文件列表、链接库列表、包含目录列表和编译定义列表
+#   - 将注册结果传递到父作用域（PARENT_SCOPE）
+# ============================================================================
 macro(infra_register_module MODULE_NAME)
     string(TOUPPER ${MODULE_NAME} _MODULE)
+    # 检查模块是否已经注册，避免重复
     if(NOT ${MODULE_NAME} IN_LIST INFRA_REGISTERED_MODULES)
+        # 将模块名添加到全局列表
         list(APPEND INFRA_REGISTERED_MODULES ${MODULE_NAME})
+        # 将更新后的列表传递到父作用域（供调用者使用）
         set(INFRA_REGISTERED_MODULES "${INFRA_REGISTERED_MODULES}" PARENT_SCOPE)
-        set(INFRA_MODULE_${_MODULE}_OBJECTS "")
+        # 初始化该模块的源文件列表（空）
+        set(INFRA_MODULE_${_MODULE}_SOURCES "")
+        # 初始化该模块的链接库列表（空）
         set(INFRA_MODULE_${_MODULE}_LINK_LIBS "")
+        # 初始化该模块的包含目录列表（空）
+        set(INFRA_MODULE_${_MODULE}_INCLUDE_DIRS "")
+        # 初始化该模块的编译定义列表（空）
+        set(INFRA_MODULE_${_MODULE}_COMPILE_DEFS "")
+        # 输出信息日志
         infra_info("Registered module '${MODULE_NAME}'")
+        infra_debug("Module ${MODULE_NAME} state initialized")
+    else()
+        infra_debug("Module ${MODULE_NAME} already registered, skipping")
     endif()
 endmacro()
 
-# ---------------------------------------------------------------------------
-# Module initialization (one-stop)
-# ---------------------------------------------------------------------------
+# ============================================================================
+# 模块完整初始化（一站式）
+# ============================================================================
+# 功能：一次性完成模块的注册、目录设置和输出目录设置
+# 参数：
+#   MODULE_NAME - 模块名称
+# 说明：这是最常用的模块初始化宏，集成了三个步骤：
+#   1. infra_register_module   - 注册模块
+#   2. infra_setup_module_dirs  - 设置模块目录
+#   3. infra_setup_output_dirs  - 设置全局输出目录
+# ============================================================================
 macro(infra_init_module MODULE_NAME)
-    infra_register_module(${MODULE_NAME})
-    infra_setup_module_dirs(${MODULE_NAME})
-    infra_setup_output_dirs()
-    infra_info("Initialized module '${MODULE_NAME}'")
+    infra_register_module(${MODULE_NAME})      # 注册模块
+    infra_setup_module_dirs(${MODULE_NAME})    # 设置模块目录
+    infra_setup_output_dirs()                  # 设置输出目录
 endmacro()
 
-# ---------------------------------------------------------------------------
-# Component registration
-#
-# Creates an OBJECT library for the component and collects its objects
-# into the parent module's object list.
-#
-# Keywords: SOURCES PRIVATE_DIRS LINK_LIBS COMPILE_DEFS
-# ---------------------------------------------------------------------------
+# ============================================================================
+# 组件注册
+# ============================================================================
+# 功能：将组件的源文件添加到模块的源文件列表中
+# 参数：
+#   MODULE_NAME     - 所属模块名称
+#   COMPONENT_NAME  - 组件名称（仅用于日志）
+# 关键字参数：
+#   SOURCES         - 源文件列表（必需）
+#   PRIVATE_DIRS    - 私有头文件目录列表
+#   LINK_LIBS       - 需要链接的库列表
+#   COMPILE_DEFS    - 编译宏定义列表
+# 说明：
+#   - 所有组件的源文件收集到 INFRA_MODULE_${MODULE}_SOURCES 列表中
+#   - 最终在 infra_finalize_module 中一次性创建库
+#   - 组件名称仅用于日志输出和调试
+# ============================================================================
 macro(infra_register_component MODULE_NAME COMPONENT_NAME)
     string(TOUPPER ${MODULE_NAME} _MODULE)
-    set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs SOURCES PRIVATE_DIRS LINK_LIBS COMPILE_DEFS)
+    
+    # 定义支持的参数类型
+    set(options "")                          # 布尔选项（无）
+    set(oneValueArgs "")                     # 单值参数（无）
+    set(multiValueArgs SOURCES PRIVATE_DIRS LINK_LIBS COMPILE_DEFS)  # 多值参数
+    
+    # 解析传入的参数
     cmake_parse_arguments(COMP "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
+    # 检查是否提供了源文件
     if(NOT COMP_SOURCES)
         infra_warn("Component ${MODULE_NAME}/${COMPONENT_NAME} has no sources")
         return()
+    else()
+        infra_debug("Component ${MODULE_NAME}/${COMPONENT_NAME} has ${COMP_SOURCES} sources")
     endif()
     
-    # Record component sources
-    set(INFRA_MODULE_${_MODULE}_${COMPONENT_NAME}_SOURCES ${COMP_SOURCES})
+    # 将源文件添加到模块的源文件列表
+    list(APPEND INFRA_MODULE_${_MODULE}_SOURCES ${COMP_SOURCES})
     
-    set(TARGET_NAME "infra_${MODULE_NAME}_${COMPONENT_NAME}")
-    add_library(${TARGET_NAME} OBJECT ${COMP_SOURCES})
-    
-    # Include directories
-    target_include_directories(${TARGET_NAME} 
-        PRIVATE 
-            ${CMAKE_CURRENT_SOURCE_DIR}
-            ${INFRA_MODULE_${_MODULE}_INC_DIR}
-    )
-    
-    # Private directories
+    # 添加私有头文件目录
     foreach(DIR ${COMP_PRIVATE_DIRS})
-        target_include_directories(${TARGET_NAME} PRIVATE ${DIR})
+        list(APPEND INFRA_MODULE_${_MODULE}_INCLUDE_DIRS ${DIR})
+        infra_debug("Added private dir: ${DIR}")
     endforeach()
     
-    # Compile definitions
+    # 添加编译宏定义
     foreach(DEF ${COMP_COMPILE_DEFS})
-        target_compile_definitions(${TARGET_NAME} PRIVATE ${DEF})
+        list(APPEND INFRA_MODULE_${_MODULE}_COMPILE_DEFS ${DEF})
+        infra_debug("Added compile def: ${DEF}")
     endforeach()
     
-    # Auto-define DLL export macros when building shared libraries.
-    # For a module named "stk", this adds -DSTK_DLL -DSTK_EXPORTING so the
-    # STK_API macro in stk/def.h emits dllexport/visibility("default").
-    if(BUILD_SHARED_LIBS)
-        target_compile_definitions(${TARGET_NAME} PRIVATE
-            ${_MODULE}_DLL
-            ${_MODULE}_EXPORTING
-        )
-    endif()
-    
-    # Apply compiler settings
-    infra_setup_target(${TARGET_NAME})
-    
-    # Collect object files
-    set(INFRA_MODULE_${_MODULE}_OBJECTS 
-        ${INFRA_MODULE_${_MODULE}_OBJECTS} 
-        $<TARGET_OBJECTS:${TARGET_NAME}>)
-    
-    # Collect link libraries
+    # 收集链接库（去重）
     foreach(LIB ${COMP_LINK_LIBS})
-        list(APPEND INFRA_MODULE_${_MODULE}_LINK_LIBS ${LIB})
+        if(NOT LIB IN_LIST INFRA_MODULE_${_MODULE}_LINK_LIBS)
+            list(APPEND INFRA_MODULE_${_MODULE}_LINK_LIBS ${LIB})
+            infra_debug("Added link lib: ${LIB}")
+        else()
+            infra_debug("Link lib ${LIB} already added, skipping")
+        endif()
     endforeach()
     
-    infra_success("Component: ${TARGET_NAME}")
+    infra_success("Component '${COMPONENT_NAME}' added to module '${MODULE_NAME}'")
 endmacro()
 
-# ---------------------------------------------------------------------------
-# Module finalization
-#
-# Assembles all component objects into the module library target
-# (shared or static depending on BUILD_SHARED_LIBS).
-# ---------------------------------------------------------------------------
+# ============================================================================
+# 模块完成（创建库）
+# ============================================================================
+# 功能：使用收集到的所有源文件创建最终的模块库（共享库或静态库）
+# 参数：
+#   MODULE_NAME - 模块名称
+# 说明：
+#   - 使用 INFRA_MODULE_${MODULE}_SOURCES 中收集的所有源文件
+#   - 根据 BUILD_SHARED_LIBS 决定创建共享库还是静态库
+#   - 创建 `infra::${MODULE_NAME}` 别名目标，方便使用
+# ============================================================================
 macro(infra_finalize_module MODULE_NAME)
     string(TOUPPER ${MODULE_NAME} _MODULE)
-    if(TARGET ${MODULE_NAME})
+    
+    # 最终库的目标名称（与模块名相同）
+    set(LIBRARY_TARGET "${MODULE_NAME}")
+    
+    # 如果最终库目标已存在，直接返回
+    if(TARGET ${LIBRARY_TARGET})
+        infra_debug("Module ${MODULE_NAME} already exists as target, skipping")
         return()
     endif()
     
-    set(OBJECTS ${INFRA_MODULE_${_MODULE}_OBJECTS})
-    if(NOT OBJECTS)
-        infra_warn("Module '${MODULE_NAME}' has no objects")
-        return()
-    endif()
+    # 获取收集到的源文件
+    set(SOURCES ${INFRA_MODULE_${_MODULE}_SOURCES})
     
-    if(BUILD_SHARED_LIBS)
-        add_library(${MODULE_NAME} SHARED ${OBJECTS})
+    # 检查是否有源文件
+    if(NOT SOURCES)
+        infra_warn("Module '${MODULE_NAME}' has no sources")
+        return()
     else()
-        add_library(${MODULE_NAME} STATIC ${OBJECTS})
+        infra_debug("Module ${MODULE_NAME} has ${SOURCES} source files")
     endif()
     
-    add_library(infra::${MODULE_NAME} ALIAS ${MODULE_NAME})
+    # 根据 BUILD_SHARED_LIBS 决定创建共享库还是静态库
+    if(BUILD_SHARED_LIBS)
+        add_library(${LIBRARY_TARGET} SHARED ${SOURCES})
+        infra_debug("Creating shared library: ${LIBRARY_TARGET}")
+    else()
+        add_library(${LIBRARY_TARGET} STATIC ${SOURCES})
+        infra_debug("Creating static library: ${LIBRARY_TARGET}")
+    endif()
     
-    # Public header directory - use the module's own include directory
-    target_include_directories(${MODULE_NAME}
+    # 创建别名目标，方便使用 `infra::module_name` 的形式链接
+    add_library(infra::${MODULE_NAME} ALIAS ${LIBRARY_TARGET})
+    infra_debug("Created alias: infra::${MODULE_NAME}")
+    
+    # 设置头文件包含目录（PUBLIC，对外可见）
+    target_include_directories(${LIBRARY_TARGET}
         PUBLIC
             $<BUILD_INTERFACE:${INFRA_MODULE_${_MODULE}_INC_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
     )
+    infra_debug("Set public include directories for ${LIBRARY_TARGET}")
     
-    # Private header directory
-    if(INFRA_MODULE_${_MODULE}_INC_DIR)
-        target_include_directories(${MODULE_NAME}
-            PRIVATE ${INFRA_MODULE_${_MODULE}_INC_DIR}
+    # 添加额外的私有头文件目录（PRIVATE，仅编译时使用）
+    foreach(DIR ${INFRA_MODULE_${_MODULE}_INCLUDE_DIRS})
+        target_include_directories(${LIBRARY_TARGET} PRIVATE ${DIR})
+        infra_debug("Added private include: ${DIR}")
+    endforeach()
+    
+    # 添加编译宏定义
+    foreach(DEF ${INFRA_MODULE_${_MODULE}_COMPILE_DEFS})
+        target_compile_definitions(${LIBRARY_TARGET} PRIVATE ${DEF})
+        infra_debug("Added compile def: ${DEF}")
+    endforeach()
+
+    # 不生成额外的 export header：直接通过目标编译定义驱动各模块 def.h
+    # 的手写 API 宏。共享库内部使用 dllexport，消费者使用 dllimport；
+    # GCC/Clang 则使用 visibility("default")。
+    if(BUILD_SHARED_LIBS)
+        target_compile_definitions(${LIBRARY_TARGET}
+            PRIVATE ${_MODULE}_DLL ${_MODULE}_EXPORTING
+            INTERFACE ${_MODULE}_DLL
         )
     endif()
     
-    # Link libraries
+    # 链接收集到的依赖库
     if(INFRA_MODULE_${_MODULE}_LINK_LIBS)
-        target_link_libraries(${MODULE_NAME} PRIVATE ${INFRA_MODULE_${_MODULE}_LINK_LIBS})
+        target_link_libraries(${LIBRARY_TARGET} PRIVATE ${INFRA_MODULE_${_MODULE}_LINK_LIBS})
+        infra_debug("Linked libraries: ${INFRA_MODULE_${_MODULE}_LINK_LIBS}")
+    else()
+        infra_debug("No link libraries for ${LIBRARY_TARGET}")
     endif()
     
-    infra_setup_target(${MODULE_NAME})
-    infra_success("Module '${MODULE_NAME}' created")
+    # 应用通用的编译器设置
+    infra_setup_target(${LIBRARY_TARGET})
 endmacro()
 
-# ---------------------------------------------------------------------------
-# Module inclusion
-#
-# Conditionally includes a module's CMakeLists.txt based on its
-# INFRA_ENABLE_{UPPER} option.
-# ---------------------------------------------------------------------------
+# ============================================================================
+# 模块包含（条件性）
+# ============================================================================
+# 功能：根据 INFRA_ENABLE_{MODULE_UPPER} 选项条件性地包含模块子目录
+# 参数：
+#   MODULE_NAME - 模块名称
+# 说明：
+#   - 如果 INFRA_ENABLE_{MODULE_UPPER} 未设置或为 FALSE，则跳过该模块
+#   - 模块子目录必须包含 CMakeLists.txt 文件
+# ============================================================================
 macro(infra_add_module MODULE_NAME)
+    # 将模块名转换为大写，用于构建选项变量名
+    # 例如：MODULE_NAME=stk -> INFRA_ENABLE_STK
     string(TOUPPER ${MODULE_NAME} MODULE_UPPER)
+
+    # 检查是否启用了该模块
     if(NOT INFRA_ENABLE_${MODULE_UPPER})
         infra_info("Module '${MODULE_NAME}' disabled")
+        infra_debug("Module ${MODULE_NAME} disabled by INFRA_ENABLE_${MODULE_UPPER}")
         return()
     endif()
 
+    # ------------------------------------------------------------------
+    # 平台门控：如果模块声明了支持的平台（INFRA_MODULE_<UPPER>_PLATFORMS），
+    # 而当前平台不在其中，则跳过该模块，避免在不受支持的平台上编译失败。
+    # 例如 modules/lnx/lnx.cmake 里: set(INFRA_MODULE_LNX_PLATFORMS "Linux")
+    # ------------------------------------------------------------------
+    if(DEFINED INFRA_MODULE_${MODULE_UPPER}_PLATFORMS)
+        set(_SUPPORTED_PLATFORMS "${INFRA_MODULE_${MODULE_UPPER}_PLATFORMS}")
+        if(NOT CMAKE_SYSTEM_NAME IN_LIST _SUPPORTED_PLATFORMS)
+            infra_info("Module '${MODULE_NAME}' skipped (requires: ${_SUPPORTED_PLATFORMS}, current: ${CMAKE_SYSTEM_NAME})")
+            return()
+        endif()
+    endif()
+
+    # 构建模块子目录的完整路径
     set(MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/${MODULE_NAME}")
+    
+    # 检查模块的 CMakeLists.txt 是否存在
     if(NOT EXISTS "${MODULE_PATH}/CMakeLists.txt")
-        infra_warn("Module '${MODULE_NAME}' not found")
+        infra_warn("Module '${MODULE_NAME}' not found at ${MODULE_PATH}")
         return()
+    else()
+        infra_debug("Found module at: ${MODULE_PATH}")
     endif()
 
+    # 包含模块子目录
     add_subdirectory(${MODULE_PATH})
     infra_success("Added module '${MODULE_NAME}'")
 endmacro()
 
+# ============================================================================
+# 批量添加模块
+# ============================================================================
+# 功能：批量添加所有已注册的模块
+# 说明：遍历 INFRA_MODULES 列表，逐个调用 infra_add_module
+# ============================================================================
 macro(infra_add_modules)
-    foreach(MODULE ${INFRA_MODULES})
-        infra_add_module(${MODULE})
-    endforeach()
+    if(INFRA_MODULES)
+        infra_debug("Adding modules: ${INFRA_MODULES}")
+        foreach(MODULE ${INFRA_MODULES})
+            infra_add_module(${MODULE})
+        endforeach()
+    else()
+        infra_debug("No modules to add")
+    endif()
 endmacro()

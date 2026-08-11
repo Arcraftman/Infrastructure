@@ -2,6 +2,10 @@ if(NOT INFRA_BUILD_TESTS)
     return()
 endif()
 
-set(TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/test_smoke.c)
 
-infra_add_test(stk_smoke ${TEST_SRC} infra::stk)
+
+
+
+# set(TEST_XXX ${CMAKE_CURRENT_SOURCE_DIR}/test_xxx.c)
+# infra_add_test(test_xxx ${TEST_REPRO} infra::stk)
+

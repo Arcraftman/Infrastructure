@@ -1,29 +1,31 @@
-#ifndef STK_SRC_CORE_H
-#define STK_SRC_CORE_H
-
-#include "stk/def.h"
-#include "core/config.h"
+#ifndef STK_CORE_H
+#define STK_CORE_H
 
 #ifdef __cplusplus
-#include "core/cpp/vector.hpp"
-#include "core/cpp/rbtree.hpp"
-#include "core/cpp/string.hpp"
-extern "C" {
+
+#include "stk/core/cpp/rbtree.hpp"
+#include "stk/core/cpp/string.hpp"
+#include "stk/core/cpp/vector.hpp"
+
 #else
-#include "core/vector.h"
-#include "core/rbtree.h"
-#include "core/str.h"
-#include "core/list.h"
-#include "core/arena.h"
-#include "core/buffer.h"
-#include "core/hashmap.h"
-#include "core/pool.h"
-#include "core/heap.h"
-#include "core/bitset.h"
-#endif
 
-#ifdef __cplusplus
-}
+#include "stk/core/arena.h"
+#include "stk/core/bitset.h"
+#include "stk/core/buffer.h"
+#include "stk/core/deque.h"
+#include "stk/core/hashmap.h"
+#include "stk/core/heap.h"
+#include "stk/core/list.h"
+#include "stk/core/pool.h"
+#include "stk/core/queue.h"
+#include "stk/core/rbtree.h"
+#include "stk/core/set.h"
+#include "stk/core/slist.h"
+#include "stk/core/stack.h"
+#include "stk/core/str.h"
+#include "stk/core/uf.h"
+#include "stk/core/vector.h"
+
 #endif
 
 #endif

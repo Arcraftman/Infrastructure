@@ -28,10 +28,10 @@
  */
 
 #include "lnx/def.h"
-#include "lnx/process.h"
-#include "lnx/signal.h"
-#include "lnx/sched.h"
 #include "lnx/file.h"
 #include "lnx/fsnotify.h"
+#include "lnx/process.h"
+#include "lnx/sched.h"
+#include "lnx/signal.h"
 
 #endif /* LNX_H */
