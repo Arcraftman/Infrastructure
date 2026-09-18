@@ -99,8 +99,6 @@ if(INFRA_STK_ENABLE_CORE)
     if(INFRA_STK_CORE_ENABLE_HASHMAP)
         list(APPEND CORE_SOURCES 
             ${INFRA_MODULE_STK_SRC_DIR}/core/hashmap.c
-            ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hash_impl.c
-            ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hashmap_allocator_impl.c
             ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hashmap_chainmap_impl.c
             ${INFRA_MODULE_STK_SRC_DIR}/core/internal/hashmap_oamap_impl.c
         )
